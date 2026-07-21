@@ -1,5 +1,5 @@
 import type { TemplateDef, FieldValues } from "../templates/schema";
-import { sp, FONT } from "../theme";
+import { sp, space, type, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
 import { IconButton } from "./IconButton";
 import { FieldControl } from "./FieldControl";
@@ -64,14 +64,30 @@ export function CustomizePanel({
           fontFamily: FONT,
         }}
       >
-        {template?.fields.map((field) => (
-          <FieldControl
-            key={field.key}
-            field={field}
-            value={fieldValues[field.key] ?? field.default}
-            onChange={onFieldChange}
-          />
-        ))}
+        {template ? (
+          template.fields.map((field) => (
+            <FieldControl
+              key={field.key}
+              field={field}
+              value={fieldValues[field.key] ?? field.default}
+              onChange={onFieldChange}
+            />
+          ))
+        ) : (
+          // The only cue telling a new user what to do with an empty panel.
+          <p
+            style={{
+              margin: 0,
+              padding: `0 ${space[8]}`,
+              fontFamily: FONT,
+              fontSize: type.s.size,
+              lineHeight: type.s.line,
+              color: sp.textTertiary,
+            }}
+          >
+            Select an option to customize
+          </p>
+        )}
       </div>
     </div>
   );
