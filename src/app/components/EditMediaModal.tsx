@@ -108,7 +108,9 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
           maxHeight: "100%",
           display: "flex",
           flexDirection: "column",
-          background: sp.white,
+          // Modal chrome is surface-primary (#F8F9FA); the body content sits on
+          // a white card inset 16px, per the design.
+          background: sp.bg,
           borderRadius: "8px",
           overflow: "hidden",
           boxShadow: "0 24px 64px rgba(0,0,0,0.3)",
@@ -124,8 +126,6 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "16px 16px 10px",
-            background: sp.white,
-            borderBottom: `1px solid ${sp.borderPrimary}`,
           }}
         >
           <TabLabel>{title}</TabLabel>
@@ -140,8 +140,11 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
             flex: 1,
             minHeight: 0,
             display: "flex",
-            padding: "0 16px",
+            margin: "0 16px",
             background: sp.white,
+            border: `1px solid ${sp.borderSub}`,
+            borderRadius: "4px",
+            overflow: "hidden",
           }}
         >
           <IconRail
@@ -185,8 +188,6 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
             alignItems: "center",
             justifyContent: "flex-end",
             padding: "16px",
-            background: sp.white,
-            borderTop: `1px solid ${sp.borderPrimary}`,
           }}
         >
           <button

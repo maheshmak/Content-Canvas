@@ -22,6 +22,7 @@
   /* Borders */
   --sp-border-primary: var(--color\/border\/primary);
   --sp-border-sub: var(--color\/border\/secondary);
+  --sp-border-input-active: var(--color\/border\/input-active);
   --sp-track: var(--color\/neutral\/black-600);
 
   /* Text */

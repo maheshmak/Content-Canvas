@@ -39,9 +39,10 @@ function TemplateRow({
         flexShrink: 0,
         padding: "0 16px",
         borderRadius: "4px",
-        border: `1px solid ${isActive ? sp.blueBorder : sp.borderSub}`,
-        borderLeft: `3px solid ${isActive ? sp.blue : sp.borderSub}`,
-        background: isActive ? sp.blueSubtle : sp.white,
+        // Selected rows keep the white fill and take the lighter
+        // border/input-active blue; they do not tint or embolden.
+        border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
+        background: sp.white,
         cursor: "pointer",
         textAlign: "left",
         fontFamily: FONT,
@@ -54,8 +55,8 @@ function TemplateRow({
         style={{
           fontSize: "14px",
           lineHeight: "18px",
-          fontWeight: isActive ? 600 : 400,
-          color: isActive ? sp.blue : sp.textPrimary,
+          fontWeight: 400,
+          color: sp.textPrimary,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",

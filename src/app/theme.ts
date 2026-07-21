@@ -14,6 +14,9 @@ export const sp = {
 
   borderPrimary: "var(--sp-border-primary)",
   borderSub:     "var(--sp-border-sub)",
+  // #89B9FF — the design uses this, not the bolder brand blue, for the
+  // selected template row.
+  borderActive:  "var(--sp-border-input-active)",
   track:         "var(--sp-track)",
 
   textPrimary:   "var(--sp-text-primary)",
