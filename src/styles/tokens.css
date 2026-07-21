@@ -30,6 +30,7 @@
   --sp-text-secondary: var(--color\/text\/secondary);
   --sp-text-tertiary: var(--color\/text\/tertiary);
   --sp-text-disabled: var(--color\/text\/disabled);
+  --sp-icon-secondary: var(--color\/icon\/secondary);
   --sp-danger: var(--color\/text\/danger);
 
   /* Brand */

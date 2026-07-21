@@ -1,11 +1,11 @@
-import { Type, Images } from "lucide-react";
 import { sp } from "../theme";
+import { TextIcon, TemplatesIcon } from "./icons";
 
 export type EditorTab = "text" | "templates";
 
-const TABS: { id: EditorTab; label: string; Icon: typeof Type }[] = [
-  { id: "text", label: "Text", Icon: Type },
-  { id: "templates", label: "Templates", Icon: Images },
+const TABS: { id: EditorTab; label: string; Icon: typeof TextIcon }[] = [
+  { id: "text", label: "Text", Icon: TextIcon },
+  { id: "templates", label: "Templates", Icon: TemplatesIcon },
 ];
 
 /**
@@ -79,10 +79,10 @@ export function IconRail({
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: "2px",
-                color: isActive ? sp.blue : sp.textSecondary,
+                color: isActive ? sp.blue : sp.iconSecondary,
               }}
             >
-              <Icon size={20} />
+              <Icon />
             </span>
           </button>
         );

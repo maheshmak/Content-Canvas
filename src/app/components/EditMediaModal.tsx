@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
-import { X } from "lucide-react";
 import type { TemplateDef, FieldValues } from "../templates/schema";
 import { getDefaults } from "../templates/schema";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
+import { CloseIcon } from "./icons";
 import { IconButton } from "./IconButton";
 import { IconRail } from "./IconRail";
 import type { EditorTab } from "./IconRail";
@@ -126,7 +126,7 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
           >
             <TabLabel variant="header">{title}</TabLabel>
             <IconButton title="Close" onClick={onClose}>
-              <X size={20} />
+              <CloseIcon />
             </IconButton>
           </div>
         </div>

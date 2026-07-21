@@ -23,6 +23,7 @@ export const sp = {
   textSecondary: "var(--sp-text-secondary)",
   textTertiary:  "var(--sp-text-tertiary)",
   textDisabled:  "var(--sp-text-disabled)",
+  iconSecondary: "var(--sp-icon-secondary)",
   danger:        "var(--sp-danger)",
 
   blue:          "var(--sp-blue)",

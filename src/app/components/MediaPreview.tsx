@@ -1,7 +1,7 @@
 import { useRef, useState, useLayoutEffect } from "react";
 import type { ReactNode } from "react";
 import type { TemplateDef, FieldValues } from "../templates/schema";
-import { sp, FONT } from "../theme";
+import { sp } from "../theme";
 import { FrameProvider, useFramePlayer } from "./AnimationPlayer";
 
 export interface MediaItem {
@@ -118,35 +118,6 @@ function MediaFrame({
   );
 }
 
-function EmptyState() {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 2,
-        display: "flex",
-        alignItems: "flex-end",
-        padding: "20px",
-        pointerEvents: "none",
-      }}
-    >
-      <div
-        style={{
-          padding: "8px 14px",
-          borderRadius: "4px",
-          background: "rgba(0,0,0,0.55)",
-          backdropFilter: "blur(6px)",
-        }}
-      >
-        <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.85)", fontFamily: FONT, margin: 0 }}>
-          Select a template to overlay on this image
-        </p>
-      </div>
-    </div>
-  );
-}
-
 /**
  * Video posts: the composition loops continuously. There is deliberately no
  * transport bar — it sat on top of the artwork and competed with it.
@@ -231,9 +202,7 @@ export function MediaPreview({
                 boxW={w}
                 boxH={h}
               />
-            ) : (
-              <EmptyState />
-            )
+            ) : null
           }
         />
       )}

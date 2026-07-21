@@ -1,7 +1,6 @@
 import type { TemplateDef } from "./schema";
 import { StarRatingComposition } from "./compositions/StarRating";
 import { SummerSaleComposition } from "./compositions/SummerSale";
-import { TransformationComposition } from "./compositions/Transformation";
 import { GrandOpeningComposition } from "./compositions/GrandOpening";
 import { ServiceHighlightComposition } from "./compositions/ServiceHighlight";
 import { ProTipComposition } from "./compositions/ProTip";
@@ -45,26 +44,6 @@ export const templates: TemplateDef[] = [
       { key: "bgColor", type: "color", label: "Background Color", default: "#FF6B35" },
       { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
       { key: "badgeAnchor", type: "anchor", label: "Badge position", default: "middle-center" },
-    ],
-  },
-  {
-    id: "transformation",
-    name: "Transformation",
-    category: "Before / After",
-    description: "Dramatic reveal wipe showing before and after results",
-    previewColor: "#27AE60",
-    component: TransformationComposition,
-    durationInFrames: 90,
-    fps: 30,
-    width: 1080,
-    height: 1920,
-    fields: [
-      { key: "beforeLabel", type: "text", label: "Before Label", default: "Before", maxLength: 20 },
-      { key: "afterLabel", type: "text", label: "After Label", default: "After", maxLength: 20 },
-      { key: "resultText", type: "text", label: "Result Text", default: "See the difference!", maxLength: 40 },
-      { key: "accentColor", type: "color", label: "Accent Color", default: "#27AE60" },
-      { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
-      { key: "labelAnchor", type: "anchor", label: "Label position", default: "top-center" },
     ],
   },
   {

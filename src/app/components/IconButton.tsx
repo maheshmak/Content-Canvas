@@ -33,7 +33,7 @@ export function IconButton({
         border: "none",
         borderRadius: "4px",
         background: "none",
-        color: disabled ? sp.textDisabled : sp.textTertiary,
+        color: disabled ? sp.textDisabled : sp.iconSecondary,
         cursor: disabled ? "not-allowed" : "pointer",
         padding: 0,
       }}

@@ -1,9 +1,9 @@
-import { RotateCcw } from "lucide-react";
 import type { TemplateDef, FieldValues } from "../templates/schema";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
 import { IconButton } from "./IconButton";
 import { FieldControl } from "./FieldControl";
+import { ResetIcon } from "./icons";
 
 /**
  * Right-hand 240px panel (node 5909:69105). Always rendered — when no template
@@ -48,7 +48,7 @@ export function CustomizePanel({
       >
         <TabLabel>Customize</TabLabel>
         <IconButton title="Reset to defaults" onClick={onReset} disabled={!canReset}>
-          <RotateCcw size={20} />
+          <ResetIcon />
         </IconButton>
       </div>
 
