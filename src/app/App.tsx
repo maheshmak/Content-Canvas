@@ -4,7 +4,6 @@ import { EditMediaModal } from "./components/EditMediaModal";
 import type { MediaItem, MediaType } from "./components/MediaPreview";
 import { sp, FONT } from "./theme";
 
-import imgDashboard from "@/assets/dashboard-bg.png";
 import imgHeadphones from "@/assets/headphones.png";
 import imgPancakes from "@/assets/pancakes.png";
 import imgDogs from "@/assets/dogs.png";
@@ -46,22 +45,6 @@ export default function App() {
         background: sp.bg,
       }}
     >
-      {/* Content Canvas dashboard (node 5955:498378) as the scene behind the
-          modal. Non-interactive — the real screen replaces this. */}
-      <img
-        src={imgDashboard}
-        alt=""
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          objectPosition: "top left",
-          pointerEvents: "none",
-        }}
-      />
       {/* Harness for opening the modal — stands in for clicking a post's media. */}
       <div style={{ position: "relative", zIndex: 1, padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
