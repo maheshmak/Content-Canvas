@@ -152,7 +152,10 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
               alignItems: "flex-start",
               background: sp.white,
               borderRadius: "8px",
-              overflowX: "hidden",
+              // Edge rule: never clip content. If the viewport is too narrow
+              // for the fixed side panels, the card scrolls instead of cutting
+              // the Customize column off.
+              overflowX: "auto",
               overflowY: "auto",
             }}
           >

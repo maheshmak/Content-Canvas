@@ -13,18 +13,14 @@ export interface MediaItem {
 
 export type MediaType = "image" | "video";
 
-/** Media frame width from the design (node 5918:69156); height fills the column. */
+/** Media frame size from the design (node 5918:69156). */
 const MEDIA_W = 360;
+const MEDIA_H = 646;
 
 /**
  * Compositions are authored on their full export canvas (1080x1920) in absolute
  * pixels — 100px type, a 260px badge. They must render at that native size and
- * be scaled to the preview frame, the way a video player does. Dropping them in
- * unscaled renders them roughly 3x oversized.
- *
- * The frame's height comes from flex layout, so the scale is measured rather
- * than assumed — that keeps the overlay correct when the modal is clamped on a
- * short viewport.
+ * be scaled to the preview frame, the way a video player does.
  */
 function ScaledComposition({
   template,
@@ -69,8 +65,19 @@ function ScaledComposition({
   );
 }
 
-/** Measures its own box so the overlay can be scaled to it. */
-function MediaFrame({
+/**
+ * Fits the media frame into whatever space the column has, at the design's
+ * fixed 360:646 aspect ratio, never larger than 360x646.
+ *
+ * The edge rule this enforces: the frame shrinks *as a whole* on small
+ * viewports instead of letting flex layout squash its height. A squashed box
+ * changes the aspect ratio, and the cover-scaled overlay then crops the canvas
+ * top and bottom — cutting through composition content that sits well inside
+ * its own safe margins. Keeping the ratio fixed means cover-scale is exact-fit
+ * and nothing is ever clipped; the column's 16px padding stays intact around
+ * the frame at every size.
+ */
+function FittedFrame({
   media,
   render,
 }: {
@@ -78,44 +85,68 @@ function MediaFrame({
   render?: (size: { w: number; h: number }) => ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [avail, setAvail] = useState({ w: 0, h: 0 });
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    const measure = () => setAvail({ w: el.clientWidth, h: el.clientHeight });
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    // Belt and braces: some embedded environments fail to deliver RO callbacks
+    // on viewport resize, which left the frame stuck at its old size.
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, []);
+
+  // Largest 360:646 box that fits the available space, capped at design size.
+  const w = Math.floor(Math.min(MEDIA_W, avail.w, (avail.h * MEDIA_W) / MEDIA_H));
+  const h = Math.floor((w * MEDIA_H) / MEDIA_W);
 
   return (
     <div
       ref={ref}
       style={{
-        position: "relative",
-        width: `${MEDIA_W}px`,
         flex: 1,
         minHeight: 0,
-        borderRadius: "8px",
-        overflow: "hidden",
-        background: "#000",
+        minWidth: 0,
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      <img
-        src={media.src}
-        alt={media.alt}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          display: "block",
-        }}
-      />
-      {render?.({ w: size.w, h: size.h })}
+      {w > 0 && h > 0 && (
+        <div
+          style={{
+            position: "relative",
+            width: `${w}px`,
+            height: `${h}px`,
+            flexShrink: 0,
+            borderRadius: "8px",
+            overflow: "hidden",
+            background: "#000",
+          }}
+        >
+          <img
+            src={media.src}
+            alt={media.alt}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          {render?.({ w, h })}
+        </div>
+      )}
     </div>
   );
 }
@@ -140,7 +171,7 @@ function VideoPreview({
   });
 
   return (
-    <MediaFrame
+    <FittedFrame
       media={media}
       render={({ w, h }) => (
         <ScaledComposition
@@ -190,7 +221,7 @@ export function MediaPreview({
           fieldValues={fieldValues}
         />
       ) : (
-        <MediaFrame
+        <FittedFrame
           media={media}
           render={({ w, h }) =>
             template ? (
