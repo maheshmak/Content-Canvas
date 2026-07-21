@@ -22,7 +22,9 @@ const MEDIA_ITEMS: MediaItem[] = [
 export default function App() {
   const [open, setOpen] = useState(true);
   const [activeMediaId, setActiveMediaId] = useState("1");
-  const [mediaType, setMediaType] = useState<MediaType>("image");
+  // Defaults to video so the templates' motion is visible on load. In the real
+  // app this comes from the post's media type, not a toggle.
+  const [mediaType, setMediaType] = useState<MediaType>("video");
 
   const activeMedia = MEDIA_ITEMS.find((m) => m.id === activeMediaId) ?? MEDIA_ITEMS[0];
 
@@ -64,7 +66,10 @@ export default function App() {
           >
             Edit media
           </button>
-          {(["image", "video"] as MediaType[]).map((t) => (
+          <span style={{ fontSize: "13px", color: sp.textSecondary, marginLeft: "8px" }}>
+            Preview as:
+          </span>
+          {(["video", "image"] as MediaType[]).map((t) => (
             <button
               key={t}
               type="button"
