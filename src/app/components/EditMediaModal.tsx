@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import type { TemplateDef, FieldValues } from "../templates/schema";
-import { getDefaults } from "../templates/schema";
+import type { TemplateDef, TemplateState, PostCopy } from "../templates/schema";
+import { getDefaults, tidyPositions, canHide } from "../templates/schema";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
 import { CloseIcon } from "./icons";
@@ -9,14 +9,16 @@ import { IconRail } from "./IconRail";
 import type { EditorTab } from "./IconRail";
 import { TemplatePanel } from "./TemplatePanel";
 import { CustomizePanel } from "./CustomizePanel";
-import { MediaPreview } from "./MediaPreview";
+import { MediaPlayback } from "./MediaPreview";
 import type { MediaItem, MediaType } from "./MediaPreview";
 
 interface Props {
   media: MediaItem;
   mediaType: MediaType;
+  /** Copy the AI already wrote for this post; bound into layers via `source`. */
+  post?: PostCopy;
   onClose: () => void;
-  onSave: (template: TemplateDef | null, fieldValues: FieldValues) => void;
+  onSave: (template: TemplateDef | null, state: TemplateState) => void;
 }
 
 /** Placeholder for the Text tab — not in scope this round. */
@@ -45,10 +47,11 @@ function TextPanel() {
   );
 }
 
-export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
+export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Props) {
   const [activeTab, setActiveTab] = useState<EditorTab>("templates");
   const [template, setTemplate] = useState<TemplateDef | null>(null);
-  const [fieldValues, setFieldValues] = useState<FieldValues>({});
+  const [state, setState] = useState<TemplateState>({ values: {}, layers: {}, extras: [] });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -58,19 +61,38 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
 
   const handleSelect = useCallback((t: TemplateDef) => {
     setTemplate(t);
-    setFieldValues(getDefaults(t.fields));
-  }, []);
+    // Post copy flows in here, so the user never meets a blank box.
+    setState(getDefaults(t, post));
+    setSelectedId(null);
+  }, [post]);
 
   const handleFieldChange = useCallback((key: string, value: string | number) => {
-    setFieldValues((prev) => ({ ...prev, [key]: value }));
+    setState((prev) => ({ ...prev, values: { ...prev.values, [key]: value } }));
+  }, []);
+
+  const handleToggleLayer = useCallback((id: string) => {
+    setState((prev) => {
+      const layer = prev.layers[id];
+      if (!layer) return prev;
+      // A post can never be emptied: the last visible layer cannot be hidden.
+      if (layer.visible && !canHide(prev)) return prev;
+      return { ...prev, layers: { ...prev.layers, [id]: { ...layer, visible: !layer.visible } } };
+    });
   }, []);
 
   const handleReset = useCallback(() => {
-    if (template) setFieldValues(getDefaults(template.fields));
+    if (template) {
+      setState(getDefaults(template, post));
+      setSelectedId(null);
+    }
+  }, [template, post]);
+
+  const handleTidy = useCallback(() => {
+    if (template) setState((prev) => tidyPositions(template, prev));
   }, [template]);
 
   const isDirty = template
-    ? template.fields.some((f) => fieldValues[f.key] !== f.default)
+    ? JSON.stringify(state) !== JSON.stringify(getDefaults(template, post))
     : false;
 
   const title = "Edit Media";
@@ -116,15 +138,7 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
             padding: "16px",
           }}
         >
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              minWidth: 0,
-            }}
-          >
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", minWidth: 0 }}>
             <TabLabel variant="header">{title}</TabLabel>
             <IconButton title="Close" onClick={onClose}>
               <CloseIcon />
@@ -132,7 +146,7 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
           </div>
         </div>
 
-        {/* ── Body: white radius-8 card, no border, inset 16px ── */}
+        {/* ── Body: white radius-8 card, inset 16px ── */}
         <div
           style={{
             flex: 1,
@@ -153,9 +167,6 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
               alignItems: "flex-start",
               background: sp.white,
               borderRadius: "8px",
-              // Edge rule: never clip content. If the viewport is too narrow
-              // for the fixed side panels, the card scrolls instead of cutting
-              // the Customize column off.
               overflowX: "auto",
               overflowY: "auto",
             }}
@@ -163,29 +174,23 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
             <IconRail active={activeTab} onChange={setActiveTab} />
 
             {activeTab === "templates" ? (
-              <TemplatePanel
-                activeTemplateId={template?.id ?? null}
-                onSelect={handleSelect}
-              />
+              <TemplatePanel activeTemplateId={template?.id ?? null} onSelect={handleSelect} />
             ) : (
               <TextPanel />
             )}
 
-            <MediaPreview
-              media={media}
-              template={template}
-              fieldValues={fieldValues}
-              mediaType={mediaType}
-            />
+            <MediaPlayback media={media} template={template} state={state} mediaType={mediaType} />
 
-            {/* Customize applies to templates only; the Text tab has no
-                options yet, so the panel is hidden there until it does. */}
             {activeTab === "templates" && (
               <CustomizePanel
                 template={template}
-                fieldValues={fieldValues}
+                state={state}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
                 onFieldChange={handleFieldChange}
+                onToggleLayer={handleToggleLayer}
                 onReset={handleReset}
+                onTidy={handleTidy}
                 canReset={isDirty}
               />
             )}
@@ -206,7 +211,7 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
           <button
             type="button"
             disabled={!template}
-            onClick={() => onSave(template, fieldValues)}
+            onClick={() => onSave(template, state)}
             style={{
               minWidth: "80px",
               height: "32px",

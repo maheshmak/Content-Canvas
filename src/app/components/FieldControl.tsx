@@ -1,6 +1,5 @@
-import type { FieldDef, Anchor } from "../templates/schema";
-import { ANCHORS } from "../templates/schema";
-import { sp, space, radius, type, FONT } from "../theme";
+import type { FieldDef } from "../templates/schema";
+import { sp, radius, type, FONT } from "../theme";
 import { Field, TextInput, TextArea, Select, ColorInput } from "./ds";
 
 /**
@@ -16,70 +15,8 @@ interface Props {
   onChange: (key: string, value: string | number) => void;
 }
 
-/** 3x3 grid mirroring the nine anchors, so the control reads as the canvas. */
-function AnchorPicker({
-  value,
-  onChange,
-}: {
-  value: Anchor;
-  onChange: (a: Anchor) => void;
-}) {
-  return (
-    <div
-      role="radiogroup"
-      style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: space[4], width: "108px" }}
-    >
-      {ANCHORS.map((a) => {
-        const isActive = a === value;
-        return (
-          <button
-            key={a}
-            type="button"
-            role="radio"
-            aria-checked={isActive}
-            aria-label={a.replace("-", " ")}
-            title={a.replace("-", " ")}
-            onClick={() => onChange(a)}
-            style={{
-              height: "32px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              borderRadius: radius[2],
-              border: `1px solid ${isActive ? sp.borderActive : sp.borderInput}`,
-              background: isActive ? sp.inputActive : sp.inputBg,
-              cursor: "pointer",
-            }}
-          >
-            <span
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "1px",
-                background: isActive ? sp.blue : sp.track,
-              }}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 export function FieldControl({ field, value, onChange }: Props) {
   const id = `field-${field.key}`;
-
-  if (field.type === "anchor") {
-    return (
-      <Field label={field.label}>
-        <AnchorPicker
-          value={(value as Anchor) ?? field.default}
-          onChange={(a) => onChange(field.key, a)}
-        />
-      </Field>
-    );
-  }
 
   if (field.type === "select") {
     return (

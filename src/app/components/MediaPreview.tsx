@@ -2,8 +2,9 @@ import { useRef, useState, useLayoutEffect, useEffect } from "react";
 import type { ReactNode } from "react";
 import { Player, Thumbnail } from "@remotion/player";
 import type { PlayerRef } from "@remotion/player";
-import type { TemplateDef, FieldValues } from "../templates/schema";
+import type { TemplateDef, TemplateState } from "../templates/schema";
 import { sp } from "../theme";
+import { TemplateComposition } from "./TemplateComposition";
 
 export interface MediaItem {
   id: string;
@@ -14,26 +15,21 @@ export interface MediaItem {
 export type MediaType = "image" | "video";
 
 /**
- * Preview frame, matching the compositions' 9:16 canvas exactly.
- *
- * The design specifies 360x646, which is ~1% off 9:16 and would letterbox
- * inside the player. 360x640 is an exact match, so the preview is
- * pixel-for-pixel what will export. Six pixels, invisible.
+ * Preview frame, matching the compositions' 9:16 canvas exactly, so the preview
+ * is pixel-for-pixel what will export.
  */
-const MEDIA_W = 360;
-const MEDIA_H = 640;
+export const MEDIA_W = 360;
+export const MEDIA_H = 640;
 
 /**
- * Fits the media frame into whatever space the column has, at a fixed 9:16,
- * never larger than the design size.
+ * Fits the media frame into the available space at a fixed 9:16, never larger
+ * than the design size.
  *
- * The edge rule this enforces: the frame shrinks *as a whole* on small
- * viewports instead of letting flex layout squash its height. A squashed box
- * changes the aspect ratio, which crops composition content that sits well
- * inside its own safe margins. Fixed ratio means nothing is ever clipped, and
- * the column's 16px padding stays intact at every size.
+ * The frame shrinks as a whole on small viewports rather than letting flex
+ * squash its height — a squashed box changes the aspect ratio and crops content
+ * that sits well inside its own safe margins.
  */
-function FittedFrame({
+export function FittedFrame({
   media,
   render,
 }: {
@@ -106,68 +102,50 @@ function FittedFrame({
   );
 }
 
-/** Wrapper holding the composition above the photo. */
-const overlayStyle = {
-  position: "absolute" as const,
-  inset: 0,
-  zIndex: 2,
-};
-
 type PlayerProps = React.ComponentProps<typeof Player>;
 
 /**
- * Looping preview for video posts.
+ * Looping playback for Play mode.
  *
- * Playback is started through the player ref rather than the `autoPlay` prop:
- * the modal opens without a user gesture, and `autoPlay` alone leaves the
- * player parked on frame 0. Re-runs when the template changes so a freshly
- * mounted player starts moving too.
+ * Playback starts through the player ref rather than `autoPlay`: the modal opens
+ * without a user gesture, and autoPlay alone leaves the player reporting
+ * isPlaying:true with its clock pinned to frame 0. Seeking first reliably starts
+ * it, with a re-check for the case where the modal mounts backgrounded.
  */
-function LoopingPlayer(props: PlayerProps & { templateId: string }) {
+function LoopingPlayer(props: PlayerProps & { restartKey: string }) {
   const ref = useRef<PlayerRef>(null);
-  const { templateId, ...playerProps } = props;
+  const { restartKey, ...playerProps } = props;
 
   useEffect(() => {
     const player = ref.current;
     if (!player) return;
-
-    // `autoPlay` alone, and even play() alone, can leave the player reporting
-    // isPlaying:true while its clock stays pinned to frame 0 — the internal
-    // loop never gets going. Seeking first reliably kicks it awake.
     const start = () => {
       player.seekTo(0);
       player.play();
     };
     start();
-
-    // If the frame still hasn't moved shortly after, start it again: the modal
-    // can mount while the tab is backgrounded, and the first attempt is lost.
     const check = window.setTimeout(() => {
       if (player.getCurrentFrame() === 0) start();
     }, 300);
-
     return () => window.clearTimeout(check);
-  }, [templateId]);
+  }, [restartKey]);
 
   return <Player ref={ref} {...playerProps} loop controls={false} />;
 }
 
 /**
- * Center column (node 5909:68171): 16px padding, media centred at 360 wide.
- *
- * Remotion's Player and Thumbnail scale the 1080x1920 composition into the
- * frame themselves, so there is no manual transform maths here — they take the
- * composition's true dimensions and the box size, and do the fitting.
+ * Play mode only. Edit mode renders through EditableCanvas instead, because a
+ * playing composition is rendered video frames and nothing in it is clickable.
  */
-export function MediaPreview({
+export function MediaPlayback({
   media,
   template,
-  fieldValues,
+  state,
   mediaType,
 }: {
   media: MediaItem;
   template: TemplateDef | null;
-  fieldValues: FieldValues;
+  state: TemplateState;
   mediaType: MediaType;
 }) {
   return (
@@ -188,31 +166,22 @@ export function MediaPreview({
       <FittedFrame
         media={media}
         render={({ w, h }) => {
-          // No template selected: the photo alone. The prompt to pick one
-          // lives in the Customize panel.
           if (!template) return null;
           const shared = {
-            component: template.component,
-            // Nested deliberately: Remotion spreads inputProps as the
-            // component's props, and our compositions take a single
-            // `inputProps` prop. Flattened in the layer-model phase, where the
-            // prop type widens anyway.
-            inputProps: { inputProps: fieldValues },
+            component: TemplateComposition,
+            inputProps: { templateId: template.id, state },
             durationInFrames: template.durationInFrames,
             fps: template.fps,
             compositionWidth: template.width,
             compositionHeight: template.height,
-            // Transparent so the photo underneath shows through; Remotion's
-            // default render background is opaque.
+            // Transparent so the photo underneath shows through.
             style: { width: w, height: h, background: "transparent" },
           };
           return (
-            <div style={overlayStyle}>
+            <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
               {mediaType === "video" ? (
-                <LoopingPlayer {...shared} key={template.id} templateId={template.id} />
+                <LoopingPlayer {...shared} key={template.id} restartKey={template.id} />
               ) : (
-                // Image posts hold the last frame, where every interpolation
-                // has settled, giving the finished composed look.
                 <Thumbnail
                   {...shared}
                   key={template.id}
