@@ -15,6 +15,8 @@ export interface TextField {
   label: string;
   default: string;
   maxLength: number;
+  /** Hide the n/max counter — for short structured values (price, phone). */
+  showCount?: boolean;
 }
 
 export interface ColorField {

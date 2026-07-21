@@ -98,7 +98,7 @@ export function FieldControl({ field, value, onChange }: Props) {
     const num = Number(value);
     const pct = ((num - field.min) / (field.max - field.min)) * 100;
     return (
-      <Field label={field.label} hint={num} hintTone="brand" htmlFor={id}>
+      <Field label={field.label} htmlFor={id}>
         <input
           id={id}
           type="range"
@@ -140,7 +140,7 @@ export function FieldControl({ field, value, onChange }: Props) {
     return (
       <Field
         label={field.label}
-        hint={`${str.length}/${field.maxLength}`}
+        hint={field.showCount === false ? undefined : `${str.length}/${field.maxLength}`}
         hintTone={nearLimit ? "danger" : "muted"}
         htmlFor={id}
       >
