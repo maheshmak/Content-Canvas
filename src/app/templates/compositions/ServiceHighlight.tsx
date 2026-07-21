@@ -1,4 +1,4 @@
-import { useCurrentFrame, interpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
 import { AnchoredStack, Scrim, splitAnchor } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -8,6 +8,7 @@ interface Props {
 
 export function ServiceHighlightComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
+  const interpolate = useInterpolate();
   const { width, height } = useVideoConfig();
   const serviceName = String(inputProps.serviceName ?? "Classic Haircut");
   const price = String(inputProps.price ?? "$35");

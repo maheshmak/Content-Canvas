@@ -73,7 +73,7 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
     ? template.fields.some((f) => fieldValues[f.key] !== f.default)
     : false;
 
-  const title = mediaType === "video" ? "Edit Video" : "Edit Image";
+  const title = "Edit Media";
 
   return (
     <div

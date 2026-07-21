@@ -1,4 +1,4 @@
-import { useCurrentFrame, interpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
 import { AnchoredStack, AnchoredItem, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -8,6 +8,7 @@ interface Props {
 
 export function ProTipComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
+  const interpolate = useInterpolate();
   const { width, height } = useVideoConfig();
   const tipNumber = Number(inputProps.tipNumber ?? 1);
   const tipText = String(inputProps.tipText ?? "Always use heat protectant before styling your hair");

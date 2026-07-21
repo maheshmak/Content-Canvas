@@ -1,4 +1,5 @@
 import type { TemplateDef } from "./schema";
+import { EASING_OPTIONS } from "../components/AnimationPlayer";
 import { StarRatingComposition } from "./compositions/StarRating";
 import { SummerSaleComposition } from "./compositions/SummerSale";
 import { GrandOpeningComposition } from "./compositions/GrandOpening";
@@ -24,6 +25,7 @@ export const templates: TemplateDef[] = [
       { key: "customerName", type: "text", label: "Customer Name", default: "Happy Customer", maxLength: 30 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#F5A623" },
       { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "animationStyle", type: "select", label: "Animation style", default: "ease-out", options: EASING_OPTIONS },
     ],
   },
   {
@@ -43,6 +45,7 @@ export const templates: TemplateDef[] = [
       { key: "tagline", type: "text", label: "Tagline", default: "Limited time only — shop now!", maxLength: 50 },
       { key: "bgColor", type: "color", label: "Background Color", default: "#FF6B35" },
       { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "animationStyle", type: "select", label: "Animation style", default: "ease-out", options: EASING_OPTIONS },
       { key: "badgeAnchor", type: "anchor", label: "Badge position", default: "middle-center" },
     ],
   },
@@ -63,6 +66,7 @@ export const templates: TemplateDef[] = [
       { key: "message", type: "text", label: "Message", default: "Join us for our grand opening!", maxLength: 50 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#8B5CF6" },
       { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "animationStyle", type: "select", label: "Animation style", default: "ease-out", options: EASING_OPTIONS },
     ],
   },
   {
@@ -82,6 +86,7 @@ export const templates: TemplateDef[] = [
       { key: "description", type: "text", label: "Description", default: "Precision cut, wash & style included", maxLength: 60 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#0EA5E9" },
       { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "animationStyle", type: "select", label: "Animation style", default: "ease-out", options: EASING_OPTIONS },
     ],
   },
   {
@@ -101,6 +106,7 @@ export const templates: TemplateDef[] = [
       { key: "ctaText", type: "text", label: "Call to Action", default: "Follow for more tips!", maxLength: 40 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#10B981" },
       { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "animationStyle", type: "select", label: "Animation style", default: "ease-out", options: EASING_OPTIONS },
       { key: "badgeAnchor", type: "anchor", label: "Badge position", default: "top-left" },
     ],
   },
@@ -121,6 +127,7 @@ export const templates: TemplateDef[] = [
       { key: "hours", type: "text", label: "Business Hours", default: "Mon–Sat  9am – 7pm", maxLength: 40 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#F59E0B" },
       { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "animationStyle", type: "select", label: "Animation style", default: "ease-out", options: EASING_OPTIONS },
       { key: "pinAnchor", type: "anchor", label: "Pin position", default: "top-center" },
     ],
   },

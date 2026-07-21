@@ -1,4 +1,4 @@
-import { useCurrentFrame, interpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
 import { AnchoredStack, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -7,6 +7,7 @@ interface Props {
 }
 
 function Star({ filled, color, delay, frame }: { filled: boolean; color: string; delay: number; frame: number }) {
+  const interpolate = useInterpolate();
   const scale = interpolate(frame, [delay, delay + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const opacity = interpolate(frame, [delay, delay + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
@@ -20,6 +21,7 @@ function Star({ filled, color, delay, frame }: { filled: boolean; color: string;
 
 export function StarRatingComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
+  const interpolate = useInterpolate();
   const { width, height } = useVideoConfig();
   const rating = Math.min(5, Math.max(1, Number(inputProps.rating ?? 5)));
   const reviewText = String(inputProps.reviewText ?? "Best haircut in town!");

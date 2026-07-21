@@ -1,11 +1,38 @@
 import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import type { ReactNode } from "react";
 
+/**
+ * Animation style. Applied to the normalised progress inside every
+ * interpolation, so one setting restyles a whole template without any
+ * composition needing to know about it.
+ */
+export type EasingName = "linear" | "ease-in" | "ease-out" | "ease-in-out" | "bouncy";
+
+export const EASING_OPTIONS: { value: EasingName; label: string }[] = [
+  { value: "ease-out", label: "Ease out" },
+  { value: "ease-in", label: "Ease in" },
+  { value: "ease-in-out", label: "Ease in out" },
+  { value: "bouncy", label: "Bouncy" },
+  { value: "linear", label: "Linear" },
+];
+
+const BACK = 1.70158;
+
+export const EASINGS: Record<EasingName, (t: number) => number> = {
+  "linear": (t) => t,
+  "ease-in": (t) => t * t * t,
+  "ease-out": (t) => 1 - Math.pow(1 - t, 3),
+  "ease-in-out": (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+  // Overshoots past 1 before settling — the "bouncy" feel.
+  "bouncy": (t) => 1 + (BACK + 1) * Math.pow(t - 1, 3) + BACK * Math.pow(t - 1, 2),
+};
+
 interface FrameContextValue {
   frame: number;
   fps: number;
   width: number;
   height: number;
+  easing: EasingName;
 }
 
 const FrameContext = createContext<FrameContextValue>({
@@ -13,6 +40,7 @@ const FrameContext = createContext<FrameContextValue>({
   fps: 30,
   width: 1080,
   height: 1920,
+  easing: "ease-out",
 });
 
 export function useCurrentFrame(): number {
@@ -34,10 +62,11 @@ export function FrameProvider({
   fps,
   width,
   height,
+  easing,
   children,
 }: FrameContextValue & { children: ReactNode }) {
   return (
-    <FrameContext.Provider value={{ frame, fps, width, height }}>
+    <FrameContext.Provider value={{ frame, fps, width, height, easing }}>
       {children}
     </FrameContext.Provider>
   );
@@ -51,11 +80,36 @@ export function FrameProvider({
  * implementation silently drops the third stop and clamps at the peak, so the
  * pulse ramps up and sticks instead of easing back.
  */
-export function interpolate(
+export type Interpolate = (
   frame: number,
   inputRange: number[],
   outputRange: number[],
   options?: { extrapolateLeft?: "clamp" | "extend"; extrapolateRight?: "clamp" | "extend" }
+) => number;
+
+/**
+ * Returns an `interpolate` bound to the template's animation style.
+ *
+ * Compositions call this instead of importing `interpolate` directly, so
+ * changing the style field restyles every animation in the template without a
+ * single call site changing shape.
+ */
+export function useInterpolate(): Interpolate {
+  const { easing } = useContext(FrameContext);
+  const ease = EASINGS[easing] ?? EASINGS["ease-out"];
+  return (frame, inputRange, outputRange, options) =>
+    interpolate(frame, inputRange, outputRange, { ...options, ease });
+}
+
+export function interpolate(
+  frame: number,
+  inputRange: number[],
+  outputRange: number[],
+  options?: {
+    extrapolateLeft?: "clamp" | "extend";
+    extrapolateRight?: "clamp" | "extend";
+    ease?: (t: number) => number;
+  }
 ): number {
   if (inputRange.length < 2 || inputRange.length !== outputRange.length) {
     throw new Error("interpolate: inputRange and outputRange must be the same length (>= 2)");
@@ -77,11 +131,13 @@ export function interpolate(
     return outputRange[last - 1] + (outputRange[last] - outputRange[last - 1]) * t;
   }
 
+  const ease = options?.ease;
   for (let i = 0; i < last; i++) {
     if (frame >= inputRange[i] && frame <= inputRange[i + 1]) {
       const span = inputRange[i + 1] - inputRange[i];
       const t = span === 0 ? 0 : (frame - inputRange[i]) / span;
-      return outputRange[i] + (outputRange[i + 1] - outputRange[i]) * t;
+      const eased = ease ? ease(t) : t;
+      return outputRange[i] + (outputRange[i + 1] - outputRange[i]) * eased;
     }
   }
 

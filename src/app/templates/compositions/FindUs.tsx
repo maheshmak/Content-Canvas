@@ -1,4 +1,4 @@
-import { useCurrentFrame, interpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
 import { AnchoredStack, AnchoredItem, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -38,6 +38,7 @@ function Row({
 
 export function FindUsComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
+  const interpolate = useInterpolate();
   const { width, height } = useVideoConfig();
   const address = String(inputProps.address ?? "123 Main Street, Downtown");
   const phone = String(inputProps.phone ?? "(555) 123-4567");

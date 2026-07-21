@@ -33,4 +33,33 @@ export const sp = {
   gold:          "var(--sp-gold)",
 } as const;
 
+/** Spacing scale — SocialPilot --spacing/* tokens, as lengths. */
+export const space = {
+  0: "var(--sp-space-0)",
+  2: "var(--sp-space-2)",
+  4: "var(--sp-space-4)",
+  8: "var(--sp-space-8)",
+  12: "var(--sp-space-12)",
+  16: "var(--sp-space-16)",
+  24: "var(--sp-space-24)",
+  32: "var(--sp-space-32)",
+  48: "var(--sp-space-48)",
+} as const;
+
+/** Radius scale — SocialPilot --border-radius/* tokens, as lengths. */
+export const radius = {
+  0: "var(--sp-radius-0)",
+  2: "var(--sp-radius-2)",
+  4: "var(--sp-radius-4)",
+  8: "var(--sp-radius-8)",
+  16: "var(--sp-radius-16)",
+} as const;
+
+/** Type ramp — SocialPilot --font/size/* and --font/line-height/* tokens. */
+export const type = {
+  xs: { size: "var(--sp-font-xs)", line: "var(--sp-lh-xs)" },
+  s:  { size: "var(--sp-font-s)",  line: "var(--sp-lh-s)" },
+  m:  { size: "var(--sp-font-m)",  line: "var(--sp-lh-m)" },
+} as const;
+
 export const FONT = "'Source Sans Pro', sans-serif";

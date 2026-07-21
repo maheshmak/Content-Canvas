@@ -1,8 +1,9 @@
 import { useRef, useState, useLayoutEffect } from "react";
 import type { ReactNode } from "react";
 import type { TemplateDef, FieldValues } from "../templates/schema";
-import { sp } from "../theme";
+import { sp, space, radius, type, FONT } from "../theme";
 import { FrameProvider, useFramePlayer } from "./AnimationPlayer";
+import type { EasingName } from "./AnimationPlayer";
 
 export interface MediaItem {
   id: string;
@@ -59,6 +60,7 @@ function ScaledComposition({
           fps={template.fps}
           width={template.width}
           height={template.height}
+          easing={(fieldValues.animationStyle as EasingName) ?? "ease-out"}
         >
           <template.component inputProps={fieldValues} />
         </FrameProvider>
@@ -114,6 +116,47 @@ function MediaFrame({
         }}
       />
       {render?.({ w: size.w, h: size.h })}
+    </div>
+  );
+}
+
+/**
+ * First-run affordance. Not in the Figma frame, kept deliberately: it is the
+ * only cue telling a new user what to do with an empty Customize panel.
+ */
+function EmptyState() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 2,
+        display: "flex",
+        alignItems: "flex-end",
+        padding: space[16],
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          padding: `${space[8]} ${space[12]}`,
+          borderRadius: radius[2],
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            fontFamily: FONT,
+            fontSize: type.s.size,
+            lineHeight: type.s.line,
+            color: "rgba(255,255,255,0.9)",
+          }}
+        >
+          Select a template to overlay on this image
+        </p>
+      </div>
     </div>
   );
 }
@@ -202,7 +245,9 @@ export function MediaPreview({
                 boxW={w}
                 boxH={h}
               />
-            ) : null
+            ) : (
+              <EmptyState />
+            )
           }
         />
       )}

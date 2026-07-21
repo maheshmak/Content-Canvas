@@ -1,4 +1,4 @@
-import { useCurrentFrame, interpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
 import { AnchoredStack, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -8,6 +8,7 @@ interface Props {
 
 export function GrandOpeningComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
+  const interpolate = useInterpolate();
   const { width, height } = useVideoConfig();
   const businessName = String(inputProps.businessName ?? "The Corner Cafe");
   const date = String(inputProps.date ?? "July 28, 2025");

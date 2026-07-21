@@ -48,7 +48,15 @@ export interface AnchorField {
   default: Anchor;
 }
 
-export type FieldDef = NumberField | TextField | ColorField | AnchorField;
+export interface SelectField {
+  key: string;
+  type: "select";
+  label: string;
+  default: string;
+  options: { value: string; label: string }[];
+}
+
+export type FieldDef = NumberField | TextField | ColorField | AnchorField | SelectField;
 
 export interface TemplateDef {
   id: string;

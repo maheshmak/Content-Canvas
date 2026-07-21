@@ -39,4 +39,33 @@
   --sp-blue-border: var(--color\/border\/brand-primary);
   --sp-blue-disabled: var(--color\/brand\/primary-300);
   --sp-gold: var(--color\/brand\/secondary-500);
+
+  /*
+   * Spacing and radius. The design system stores these as unitless numbers
+   * (--spacing/8: 8), so they need a px multiplier before they can be used in a
+   * declaration. Exposed here as ready-to-use lengths.
+   */
+  --sp-space-0: calc(var(--spacing\/0) * 1px);
+  --sp-space-2: calc(var(--spacing\/2) * 1px);
+  --sp-space-4: calc(var(--spacing\/4) * 1px);
+  --sp-space-8: calc(var(--spacing\/8) * 1px);
+  --sp-space-12: calc(var(--spacing\/12) * 1px);
+  --sp-space-16: calc(var(--spacing\/16) * 1px);
+  --sp-space-24: calc(var(--spacing\/24) * 1px);
+  --sp-space-32: calc(var(--spacing\/32) * 1px);
+  --sp-space-48: calc(var(--spacing\/48) * 1px);
+
+  --sp-radius-0: calc(var(--border-radius\/0) * 1px);
+  --sp-radius-2: calc(var(--border-radius\/2) * 1px);
+  --sp-radius-4: calc(var(--border-radius\/4) * 1px);
+  --sp-radius-8: calc(var(--border-radius\/8) * 1px);
+  --sp-radius-16: calc(var(--border-radius\/16) * 1px);
+
+  /* Type ramp — also stored unitless. */
+  --sp-font-xs: calc(var(--font\/size\/xs) * 1px);
+  --sp-font-s: calc(var(--font\/size\/s) * 1px);
+  --sp-font-m: calc(var(--font\/size\/m) * 1px);
+  --sp-lh-xs: calc(var(--font\/line-height\/xs) * 1px);
+  --sp-lh-s: calc(var(--font\/line-height\/s) * 1px);
+  --sp-lh-m: calc(var(--font\/line-height\/m) * 1px);
 }

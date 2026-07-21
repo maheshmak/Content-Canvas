@@ -1,6 +1,7 @@
 import type { FieldDef, Anchor } from "../templates/schema";
 import { ANCHORS } from "../templates/schema";
-import { sp, FONT } from "../theme";
+import { sp, space, radius, type, FONT } from "../theme";
+import { Field, TextArea, Select, ColorInput } from "./ds";
 
 interface Props {
   field: FieldDef;
@@ -10,76 +11,79 @@ interface Props {
 
 /** 3x3 grid mirroring the nine anchors, so the control reads as the canvas. */
 function AnchorPicker({
-  label,
   value,
   onChange,
 }: {
-  label: string;
   value: Anchor;
   onChange: (a: Anchor) => void;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontFamily: FONT }}>
-      <label style={{ fontSize: "13px", fontWeight: 600, color: sp.textPrimary, lineHeight: "18px" }}>
-        {label}
-      </label>
-      <div
-        role="radiogroup"
-        aria-label={label}
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "4px",
-          width: "96px",
-        }}
-      >
-        {ANCHORS.map((a) => {
-          const isActive = a === value;
-          return (
-            <button
-              key={a}
-              type="button"
-              role="radio"
-              aria-checked={isActive}
-              aria-label={a.replace("-", " ")}
-              title={a.replace("-", " ")}
-              onClick={() => onChange(a)}
+    <div
+      role="radiogroup"
+      style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: space[4], width: "108px" }}
+    >
+      {ANCHORS.map((a) => {
+        const isActive = a === value;
+        return (
+          <button
+            key={a}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            aria-label={a.replace("-", " ")}
+            title={a.replace("-", " ")}
+            onClick={() => onChange(a)}
+            style={{
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              borderRadius: radius[2],
+              border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
+              background: isActive ? sp.blueSubtle : sp.white,
+              cursor: "pointer",
+            }}
+          >
+            <span
               style={{
-                height: "28px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 0,
-                borderRadius: "2px",
-                border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
-                background: isActive ? sp.blueSubtle : sp.white,
-                cursor: "pointer",
+                width: "6px",
+                height: "6px",
+                borderRadius: "1px",
+                background: isActive ? sp.blue : sp.track,
               }}
-            >
-              <span
-                style={{
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "1px",
-                  background: isActive ? sp.blue : sp.track,
-                }}
-              />
-            </button>
-          );
-        })}
-      </div>
+            />
+          </button>
+        );
+      })}
     </div>
   );
 }
 
 export function FieldControl({ field, value, onChange }: Props) {
+  const id = `field-${field.key}`;
+
   if (field.type === "anchor") {
     return (
-      <AnchorPicker
-        label={field.label}
-        value={(value as Anchor) ?? field.default}
-        onChange={(a) => onChange(field.key, a)}
-      />
+      <Field label={field.label}>
+        <AnchorPicker
+          value={(value as Anchor) ?? field.default}
+          onChange={(a) => onChange(field.key, a)}
+        />
+      </Field>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <Field label={field.label} htmlFor={id}>
+        <Select
+          id={id}
+          value={String(value ?? field.default)}
+          options={field.options}
+          onChange={(e) => onChange(field.key, e.target.value)}
+        />
+      </Field>
     );
   }
 
@@ -87,16 +91,9 @@ export function FieldControl({ field, value, onChange }: Props) {
     const num = Number(value);
     const pct = ((num - field.min) / (field.max - field.min)) * 100;
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontFamily: FONT }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <label style={{ fontSize: "13px", fontWeight: 600, color: sp.textPrimary, lineHeight: "18px" }}>
-            {field.label}
-          </label>
-          <span style={{ fontSize: "13px", fontWeight: 600, color: sp.blue, lineHeight: "18px", fontVariantNumeric: "tabular-nums" }}>
-            {num}
-          </span>
-        </div>
+      <Field label={field.label} hint={num} hintTone="brand" htmlFor={id}>
         <input
+          id={id}
           type="range"
           min={field.min}
           max={field.max}
@@ -107,125 +104,55 @@ export function FieldControl({ field, value, onChange }: Props) {
             height: "4px",
             appearance: "none",
             cursor: "pointer",
-            borderRadius: "2px",
+            borderRadius: radius[2],
             background: `linear-gradient(to right, ${sp.blue} ${pct}%, ${sp.track} ${pct}%)`,
             accentColor: sp.blue,
             outline: "none",
           }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: sp.textTertiary }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontFamily: FONT,
+            fontSize: type.xs.size,
+            lineHeight: type.xs.line,
+            color: sp.textTertiary,
+          }}
+        >
           <span>{field.min}</span>
           <span>{field.max}</span>
         </div>
-      </div>
+      </Field>
     );
   }
 
   if (field.type === "text") {
     const str = String(value);
-    const nearLimit = (field.maxLength - str.length) <= 10;
+    const nearLimit = field.maxLength - str.length <= 10;
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontFamily: FONT }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <label style={{ fontSize: "13px", fontWeight: 600, color: sp.textPrimary, lineHeight: "18px" }}>
-            {field.label}
-          </label>
-          <span style={{ fontSize: "11px", color: nearLimit ? sp.danger : sp.textTertiary, fontVariantNumeric: "tabular-nums" }}>
-            {str.length}/{field.maxLength}
-          </span>
-        </div>
-        <textarea
+      <Field
+        label={field.label}
+        hint={`${str.length}/${field.maxLength}`}
+        hintTone={nearLimit ? "danger" : "muted"}
+        htmlFor={id}
+      >
+        <TextArea
+          id={id}
           value={str}
           maxLength={field.maxLength}
-          onChange={(e) => onChange(field.key, e.target.value)}
           rows={str.length > 40 ? 3 : 2}
-          style={{
-            width: "100%",
-            padding: "8px 10px",
-            borderRadius: "4px",
-            border: `1px solid ${sp.borderPrimary}`,
-            background: sp.white,
-            color: sp.textPrimary,
-            fontSize: "13px",
-            lineHeight: "18px",
-            fontFamily: FONT,
-            resize: "none",
-            outline: "none",
-            boxSizing: "border-box",
-            transition: "border-color 0.12s",
-          }}
-          onFocus={(e) => { e.target.style.borderColor = sp.blueBorder; }}
-          onBlur={(e) => { e.target.style.borderColor = sp.borderPrimary; }}
+          onChange={(e) => onChange(field.key, e.target.value)}
         />
-      </div>
+      </Field>
     );
   }
 
   if (field.type === "color") {
-    const str = String(value);
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontFamily: FONT }}>
-        <label style={{ fontSize: "13px", fontWeight: 600, color: sp.textPrimary, lineHeight: "18px" }}>
-          {field.label}
-        </label>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {/* Color swatch */}
-          <div
-            style={{
-              position: "relative",
-              width: "32px",
-              height: "32px",
-              borderRadius: "4px",
-              overflow: "hidden",
-              border: `1px solid ${sp.borderPrimary}`,
-              flexShrink: 0,
-            }}
-          >
-            <input
-              type="color"
-              value={str}
-              onChange={(e) => onChange(field.key, e.target.value)}
-              style={{
-                position: "absolute",
-                inset: "-4px",
-                width: "calc(100% + 8px)",
-                height: "calc(100% + 8px)",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-              }}
-            />
-          </div>
-          {/* Hex input */}
-          <input
-            type="text"
-            value={str.toUpperCase()}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) onChange(field.key, val.toLowerCase());
-            }}
-            maxLength={7}
-            style={{
-              flex: 1,
-              // Flex items default to min-width:auto, which would hold the input
-              // at its intrinsic size and push it past the 240px panel.
-              minWidth: 0,
-              height: "32px",
-              padding: "0 10px",
-              borderRadius: "4px",
-              border: `1px solid ${sp.borderPrimary}`,
-              background: sp.white,
-              color: sp.textPrimary,
-              fontSize: "13px",
-              fontFamily: "'Courier New', monospace",
-              outline: "none",
-              textTransform: "uppercase",
-            }}
-            onFocus={(e) => { e.target.style.borderColor = sp.blueBorder; }}
-            onBlur={(e) => { e.target.style.borderColor = sp.borderPrimary; }}
-          />
-        </div>
-      </div>
+      <Field label={field.label}>
+        <ColorInput value={String(value)} onChange={(hex) => onChange(field.key, hex)} />
+      </Field>
     );
   }
 
