@@ -25,7 +25,7 @@ export function ProTipComposition({ inputProps }: Props) {
       <div
         className="absolute top-0 left-0"
         style={{
-          padding: "28px 36px",
+          padding: "48px 56px",
           opacity: badgeOpacity,
           transform: `scale(${badgeScale})`,
           transformOrigin: "top left",
@@ -36,15 +36,15 @@ export function ProTipComposition({ inputProps }: Props) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          width: "120px",
-          height: "120px",
-          borderRadius: "16px",
+          width: "200px",
+          height: "200px",
+          borderRadius: "28px",
           background: accentColor,
           boxShadow: `0 12px 40px ${accentColor}60`,
           transform: `scale(${pulse})`,
         }}>
-          <div style={{ fontSize: "18px", fontWeight: 700, color: "rgba(255,255,255,0.8)", letterSpacing: "2px" }}>TIP</div>
-          <div style={{ fontSize: "56px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>#{tipNumber}</div>
+          <div style={{ fontSize: "30px", fontWeight: 700, color: "rgba(255,255,255,0.8)", letterSpacing: "4px" }}>TIP</div>
+          <div style={{ fontSize: "94px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>#{tipNumber}</div>
         </div>
       </div>
 
@@ -53,12 +53,12 @@ export function ProTipComposition({ inputProps }: Props) {
         className="absolute bottom-0 left-0 right-0"
         style={{
           background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.5) 55%, transparent 100%)",
-          padding: "32px 40px 28px",
+          padding: "48px 56px 48px",
         }}
       >
-        <div style={{ opacity: textOpacity, transform: `translateY(${textY}px)`, marginBottom: "20px" }}>
+        <div style={{ opacity: textOpacity, transform: `translateY(${textY}px)`, marginBottom: "32px" }}>
           <p style={{
-            fontSize: "36px",
+            fontSize: "60px",
             fontWeight: 600,
             color: "#fff",
             lineHeight: 1.45,
@@ -71,12 +71,12 @@ export function ProTipComposition({ inputProps }: Props) {
         <div style={{ opacity: ctaOpacity }}>
           <span style={{
             display: "inline-block",
-            fontSize: "26px",
+            fontSize: "44px",
             fontWeight: 600,
             color: accentColor,
-            padding: "8px 20px",
+            padding: "14px 34px",
             borderRadius: "40px",
-            border: `2px solid ${accentColor}`,
+            border: `3px solid ${accentColor}`,
             background: `${accentColor}15`,
           }}>
             {ctaText}

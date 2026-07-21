@@ -9,7 +9,7 @@ function Star({ filled, color, delay, frame }: { filled: boolean; color: string;
   const opacity = interpolate(frame, [delay, delay + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
     <div style={{ transform: `scale(${scale})`, opacity, display: "inline-flex" }}>
-      <svg width="56" height="56" viewBox="0 0 24 24" fill={filled ? color : "none"} stroke={color} strokeWidth="1.5">
+      <svg width="100" height="100" viewBox="0 0 24 24" fill={filled ? color : "none"} stroke={color} strokeWidth="1.5">
         <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
       </svg>
     </div>
@@ -36,23 +36,23 @@ export function StarRatingComposition({ inputProps }: Props) {
         className="absolute bottom-0 left-0 right-0"
         style={{
           background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 60%, transparent 100%)",
-          padding: "40px 40px 36px",
+          padding: "64px 56px 56px",
           opacity: cardOpacity,
           transform: `translateY(${cardY}px)`,
         }}
       >
         {/* Stars */}
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", gap: "14px", marginBottom: "28px" }}>
           {[0, 1, 2, 3, 4].map((i) => (
             <Star key={i} filled={i < rating} color={accentColor} delay={i * 7} frame={frame} />
           ))}
         </div>
 
         {/* Review text */}
-        <div style={{ opacity: reviewOpacity, marginBottom: "16px" }}>
+        <div style={{ opacity: reviewOpacity, marginBottom: "28px" }}>
           <p style={{
-            fontSize: "36px",
-            fontWeight: 600,
+            fontSize: "64px",
+            fontWeight: 700,
             color: "#fff",
             lineHeight: 1.4,
             letterSpacing: "-0.2px",
@@ -63,9 +63,9 @@ export function StarRatingComposition({ inputProps }: Props) {
         </div>
 
         {/* Divider + customer name */}
-        <div style={{ opacity: nameOpacity, display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{ width: "32px", height: "2px", background: accentColor, borderRadius: "1px", flexShrink: 0 }} />
-          <p style={{ fontSize: "28px", fontWeight: 500, color: accentColor }}>
+        <div style={{ opacity: nameOpacity, display: "flex", alignItems: "center", gap: "20px" }}>
+          <div style={{ width: "56px", height: "4px", background: accentColor, borderRadius: "1px", flexShrink: 0 }} />
+          <p style={{ fontSize: "46px", fontWeight: 600, color: accentColor }}>
             {customerName}
           </p>
         </div>

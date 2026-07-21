@@ -1,9 +1,7 @@
-import { X } from "lucide-react";
 import type { TemplateDef } from "../templates/schema";
 import { templates } from "../templates/index";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
-import { IconButton } from "./IconButton";
 
 // Per-template emoji, matching the design frame.
 const TEMPLATE_EMOJI: Record<string, string> = {
@@ -16,6 +14,12 @@ const TEMPLATE_EMOJI: Record<string, string> = {
   "find-us": "📍",
 };
 
+/**
+ * Row per node 5909:69103 — 16px padding, 8px gap, radius 4, white fill.
+ * Selection is carried entirely by the border colour: border/input-active
+ * (#89B9FF) when selected, border/secondary (#F2F2F2) otherwise. The label does
+ * not change weight or colour.
+ */
 function TemplateRow({
   template,
   isActive,
@@ -35,17 +39,14 @@ function TemplateRow({
         alignItems: "center",
         gap: "8px",
         width: "100%",
-        height: "52px",
-        flexShrink: 0,
-        padding: "0 16px",
+        padding: "16px",
         borderRadius: "4px",
-        // Selected rows keep the white fill and take the lighter
-        // border/input-active blue; they do not tint or embolden.
         border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
         background: sp.white,
         cursor: "pointer",
         textAlign: "left",
         fontFamily: FONT,
+        flexShrink: 0,
       }}
     >
       <span style={{ fontSize: "16px", lineHeight: "20px", flexShrink: 0 }}>
@@ -71,49 +72,43 @@ function TemplateRow({
 export function TemplatePanel({
   activeTemplateId,
   onSelect,
-  onClose,
 }: {
   activeTemplateId: string | null;
   onSelect: (template: TemplateDef) => void;
-  onClose: () => void;
 }) {
   return (
     <div
       style={{
         width: "240px",
         flexShrink: 0,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
+        gap: "16px",
+        padding: "8px",
         background: sp.white,
-        borderRight: `1px solid ${sp.borderPrimary}`,
+        borderRight: `1px solid ${sp.borderSub}`,
         overflow: "hidden",
       }}
     >
-      {/* Header row — 224 wide, inset 8 */}
+      {/* Header — the design's close control is opacity-0, so it is not shown. */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-end",
           justifyContent: "space-between",
-          height: "32px",
-          margin: "8px",
+          width: "100%",
           flexShrink: 0,
         }}
       >
         <TabLabel>Templates</TabLabel>
-        <IconButton title="Close templates" onClick={onClose}>
-          <X size={16} />
-        </IconButton>
       </div>
 
-      {/* Options list — starts at y=56 */}
       <div
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          padding: "8px",
-          paddingTop: "8px",
           display: "flex",
           flexDirection: "column",
           gap: "8px",

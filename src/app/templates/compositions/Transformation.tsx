@@ -25,19 +25,19 @@ export function TransformationComposition({ inputProps }: Props) {
       <div
         className="absolute top-0 left-0"
         style={{
-          padding: "28px 32px",
+          padding: "48px 52px",
           opacity: beforeOpacity,
         }}
       >
         <div style={{
           display: "inline-block",
-          padding: "8px 20px",
-          borderRadius: "6px",
+          padding: "14px 34px",
+          borderRadius: "10px",
           background: "rgba(0,0,0,0.55)",
           backdropFilter: "blur(4px)",
           border: "1px solid rgba(255,255,255,0.2)",
         }}>
-          <p style={{ fontSize: "32px", fontWeight: 700, color: "#fff", letterSpacing: "2px" }}>{beforeLabel}</p>
+          <p style={{ fontSize: "54px", fontWeight: 700, color: "#fff", letterSpacing: "3px" }}>{beforeLabel}</p>
         </div>
       </div>
 
@@ -45,18 +45,18 @@ export function TransformationComposition({ inputProps }: Props) {
       <div
         className="absolute top-0 right-0"
         style={{
-          padding: "28px 32px",
+          padding: "48px 52px",
           opacity: afterOpacity,
         }}
       >
         <div style={{
           display: "inline-block",
-          padding: "8px 20px",
-          borderRadius: "6px",
+          padding: "14px 34px",
+          borderRadius: "10px",
           background: accentColor,
           boxShadow: `0 4px 16px ${accentColor}60`,
         }}>
-          <p style={{ fontSize: "32px", fontWeight: 700, color: "#fff", letterSpacing: "2px" }}>{afterLabel}</p>
+          <p style={{ fontSize: "54px", fontWeight: 700, color: "#fff", letterSpacing: "3px" }}>{afterLabel}</p>
         </div>
       </div>
 
@@ -78,15 +78,15 @@ export function TransformationComposition({ inputProps }: Props) {
           left: `${dividerX}%`,
           top: "50%",
           transform: `translate(-50%, -50%) scale(${arrowScale})`,
-          width: "48px",
-          height: "48px",
+          width: "84px",
+          height: "84px",
           borderRadius: "50%",
           background: "#fff",
           boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
           opacity: afterOpacity,
         }}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2.5" strokeLinecap="round">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2.5" strokeLinecap="round">
           <path d="M15 18l-6-6 6-6" />
           <path d="M9 18l6-6-6-6" />
         </svg>
@@ -96,12 +96,12 @@ export function TransformationComposition({ inputProps }: Props) {
       <div
         className="absolute bottom-0 left-0 right-0"
         style={{
-          padding: "28px 40px",
+          padding: "48px 56px",
           background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)",
           opacity: bottomOpacity,
         }}
       >
-        <p style={{ fontSize: "40px", fontWeight: 700, color: accentColor, textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>
+        <p style={{ fontSize: "68px", fontWeight: 700, color: accentColor, textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>
           {resultText}
         </p>
       </div>

@@ -20,43 +20,33 @@ interface Props {
 }
 
 /** Placeholder for the Text tab — not in scope this round. */
-function TextPanel({ onClose }: { onClose: () => void }) {
+function TextPanel() {
   return (
     <div
       style={{
         width: "240px",
         flexShrink: 0,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
+        gap: "16px",
+        padding: "8px",
         background: sp.white,
-        borderRight: `1px solid ${sp.borderPrimary}`,
+        borderRight: `1px solid ${sp.borderSub}`,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          height: "32px",
-          margin: "8px",
-          flexShrink: 0,
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "flex-end", width: "100%", flexShrink: 0 }}>
         <TabLabel>Text</TabLabel>
-        <IconButton title="Close text" onClick={onClose}>
-          <X size={16} />
-        </IconButton>
       </div>
-      <div style={{ padding: "16px", fontFamily: FONT, fontSize: "13px", color: sp.textTertiary }}>
+      <p style={{ margin: 0, padding: "0 8px", fontFamily: FONT, fontSize: "14px", lineHeight: "18px", color: sp.textTertiary }}>
         Text layers are not available yet.
-      </div>
+      </p>
     </div>
   );
 }
 
 export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
   const [activeTab, setActiveTab] = useState<EditorTab>("templates");
-  const [panelOpen, setPanelOpen] = useState(true);
   const [template, setTemplate] = useState<TemplateDef | null>(null);
   const [fieldValues, setFieldValues] = useState<FieldValues>({});
 
@@ -108,8 +98,6 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
           maxHeight: "100%",
           display: "flex",
           flexDirection: "column",
-          // Modal chrome is surface-primary (#F8F9FA); the body content sits on
-          // a white card inset 16px, per the design.
           background: sp.bg,
           borderRadius: "8px",
           overflow: "hidden",
@@ -117,77 +105,94 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
           fontFamily: FONT,
         }}
       >
-        {/* ── Header (58px) ── */}
+        {/* ── Header (58px, 16px padding) ── */}
         <div
           style={{
             height: "58px",
             flexShrink: 0,
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "16px 16px 10px",
+            alignItems: "flex-start",
+            padding: "16px",
           }}
         >
-          <TabLabel>{title}</TabLabel>
-          <IconButton title="Close" onClick={onClose}>
-            <X size={18} />
-          </IconButton>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              minWidth: 0,
+            }}
+          >
+            <TabLabel variant="header">{title}</TabLabel>
+            <IconButton title="Close" onClick={onClose}>
+              <X size={20} />
+            </IconButton>
+          </div>
         </div>
 
-        {/* ── Body (678px) — four columns summing to 1048 ── */}
+        {/* ── Body: white radius-8 card, no border, inset 16px ── */}
         <div
           style={{
             flex: 1,
             minHeight: 0,
             display: "flex",
-            margin: "0 16px",
-            background: sp.white,
-            border: `1px solid ${sp.borderSub}`,
-            borderRadius: "4px",
-            overflow: "hidden",
+            flexDirection: "column",
+            alignItems: "center",
+            padding: "0 16px",
+            width: "100%",
           }}
         >
-          <IconRail
-            active={activeTab}
-            onChange={(tab) => { setActiveTab(tab); setPanelOpen(true); }}
-          />
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              width: "100%",
+              display: "flex",
+              alignItems: "flex-start",
+              background: sp.white,
+              borderRadius: "8px",
+              overflowX: "hidden",
+              overflowY: "auto",
+            }}
+          >
+            <IconRail active={activeTab} onChange={setActiveTab} />
 
-          {panelOpen && activeTab === "templates" && (
-            <TemplatePanel
-              activeTemplateId={template?.id ?? null}
-              onSelect={handleSelect}
-              onClose={() => setPanelOpen(false)}
+            {activeTab === "templates" ? (
+              <TemplatePanel
+                activeTemplateId={template?.id ?? null}
+                onSelect={handleSelect}
+              />
+            ) : (
+              <TextPanel />
+            )}
+
+            <MediaPreview
+              media={media}
+              template={template}
+              fieldValues={fieldValues}
+              mediaType={mediaType}
             />
-          )}
-          {panelOpen && activeTab === "text" && (
-            <TextPanel onClose={() => setPanelOpen(false)} />
-          )}
 
-          <MediaPreview
-            media={media}
-            template={template}
-            fieldValues={fieldValues}
-            mediaType={mediaType}
-          />
-
-          <CustomizePanel
-            template={template}
-            fieldValues={fieldValues}
-            onFieldChange={handleFieldChange}
-            onReset={handleReset}
-            canReset={isDirty}
-          />
+            <CustomizePanel
+              template={template}
+              fieldValues={fieldValues}
+              onFieldChange={handleFieldChange}
+              onReset={handleReset}
+              canReset={isDirty}
+            />
+          </div>
         </div>
 
         {/* ── Footer (64px) ── */}
         <div
           style={{
-            height: "64px",
             flexShrink: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
             padding: "16px",
+            background: sp.bg,
           }}
         >
           <button
@@ -195,14 +200,16 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
             disabled={!template}
             onClick={() => onSave(template, fieldValues)}
             style={{
-              width: "80px",
+              minWidth: "80px",
               height: "32px",
-              borderRadius: "4px",
+              padding: "0 16px",
+              borderRadius: "2px",
               border: "none",
               background: template ? sp.blue : sp.blueDisabled,
               color: sp.white,
               fontSize: "14px",
-              fontWeight: 600,
+              fontWeight: 400,
+              lineHeight: "18px",
               fontFamily: FONT,
               cursor: template ? "pointer" : "not-allowed",
             }}

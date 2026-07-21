@@ -25,18 +25,18 @@ export function ServiceHighlightComposition({ inputProps }: Props) {
       {/* Top label */}
       <div
         className="absolute top-0 left-0"
-        style={{ padding: "28px 36px", opacity: labelOpacity }}
+        style={{ padding: "48px 56px", opacity: labelOpacity }}
       >
         <div style={{
           display: "inline-flex",
           alignItems: "center",
           gap: "8px",
-          padding: "6px 16px",
-          borderRadius: "4px",
+          padding: "12px 28px",
+          borderRadius: "6px",
           background: accentColor,
         }}>
-          <div style={{ width: "4px", height: "18px", background: "rgba(255,255,255,0.5)", borderRadius: "2px" }} />
-          <span style={{ fontSize: "20px", fontWeight: 700, color: "#fff", letterSpacing: "3px" }}>FEATURED SERVICE</span>
+          <div style={{ width: "7px", height: "30px", background: "rgba(255,255,255,0.5)", borderRadius: "2px" }} />
+          <span style={{ fontSize: "34px", fontWeight: 700, color: "#fff", letterSpacing: "5px" }}>FEATURED SERVICE</span>
         </div>
       </div>
 
@@ -51,22 +51,22 @@ export function ServiceHighlightComposition({ inputProps }: Props) {
         className="absolute bottom-0 left-0 right-0"
         style={{
           background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)",
-          padding: "36px 44px 32px",
+          padding: "56px 56px 52px",
           opacity: barOpacity,
         }}
       >
         <div style={{ opacity: nameOpacity, transform: `translateY(${nameY}px)`, marginBottom: "8px" }}>
-          <h2 style={{ fontSize: "58px", fontWeight: 900, color: "#fff", lineHeight: 1.1, textShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+          <h2 style={{ fontSize: "96px", fontWeight: 900, color: "#fff", lineHeight: 1.1, textShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
             {serviceName}
           </h2>
         </div>
 
         <div style={{ display: "flex", alignItems: "baseline", gap: "16px", marginBottom: "14px", opacity: priceOpacity, transform: `scale(${priceScale})`, transformOrigin: "left bottom" }}>
-          <span style={{ fontSize: "80px", fontWeight: 900, color: accentColor, lineHeight: 1 }}>{price}</span>
+          <span style={{ fontSize: "132px", fontWeight: 900, color: accentColor, lineHeight: 1 }}>{price}</span>
         </div>
 
         <p style={{
-          fontSize: "28px",
+          fontSize: "46px",
           fontWeight: 400,
           color: "rgba(255,255,255,0.72)",
           opacity: descOpacity,

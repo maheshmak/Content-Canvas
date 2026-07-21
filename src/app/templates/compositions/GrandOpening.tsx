@@ -15,7 +15,7 @@ export function GrandOpeningComposition({ inputProps }: Props) {
     x: 5 + i * 4.75,
     delay: i * 2,
     color: [accentColor, "#FFD700", "#FF6B6B", "#4ECDC4", "#fff"][i % 5],
-    size: 8 + (i % 5) * 4,
+    size: 14 + (i % 5) * 7,
   }));
 
   const overlayOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -52,15 +52,15 @@ export function GrandOpeningComposition({ inputProps }: Props) {
       {/* "NOW OPEN" top pill */}
       <div
         className="absolute top-0 left-0 right-0 flex justify-center"
-        style={{ paddingTop: "28px", opacity: titleOpacity }}
+        style={{ paddingTop: "44px", opacity: titleOpacity }}
       >
         <div style={{
-          padding: "6px 24px",
+          padding: "12px 40px",
           borderRadius: "60px",
           background: accentColor,
           boxShadow: `0 8px 32px ${accentColor}60`,
         }}>
-          <span style={{ fontSize: "24px", fontWeight: 700, color: "#fff", letterSpacing: "5px" }}>NOW OPEN</span>
+          <span style={{ fontSize: "40px", fontWeight: 700, color: "#fff", letterSpacing: "8px" }}>NOW OPEN</span>
         </div>
       </div>
 
@@ -69,27 +69,27 @@ export function GrandOpeningComposition({ inputProps }: Props) {
         className="absolute bottom-0 left-0 right-0"
         style={{
           background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 55%, transparent 100%)",
-          padding: "36px 40px 32px",
+          padding: "56px 56px 52px",
           opacity: overlayOpacity,
         }}
       >
         <div style={{ transform: `scale(${titleScale})`, transformOrigin: "left bottom", opacity: titleOpacity, marginBottom: "10px" }}>
-          <h1 style={{ fontSize: "60px", fontWeight: 900, color: "#fff", lineHeight: 1.1, textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
+          <h1 style={{ fontSize: "100px", fontWeight: 900, color: "#fff", lineHeight: 1.1, textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
             {businessName}
           </h1>
         </div>
 
         <div style={{ opacity: msgOpacity, marginBottom: "16px" }}>
-          <p style={{ fontSize: "30px", color: "rgba(255,255,255,0.82)", lineHeight: 1.4 }}>{message}</p>
+          <p style={{ fontSize: "50px", color: "rgba(255,255,255,0.82)", lineHeight: 1.4 }}>{message}</p>
         </div>
 
         <div style={{ opacity: dateOpacity }}>
           <span style={{
             display: "inline-block",
-            padding: "8px 24px",
+            padding: "14px 40px",
             borderRadius: "40px",
             background: accentColor,
-            fontSize: "28px",
+            fontSize: "46px",
             fontWeight: 700,
             color: "#fff",
           }}>

@@ -9,8 +9,9 @@ const TABS: { id: EditorTab; label: string; Icon: typeof Type }[] = [
 ];
 
 /**
- * 48px rail on the far left of the modal body. Two 48x48 slots, each holding a
- * 32x32 icon button.
+ * Far-left rail (node 5909:68162). 48px wide: a 32px icon button with 8px
+ * padding either side. The active row takes a surface-primary fill and a 2px
+ * brand-blue left edge.
  */
 export function IconRail({
   active,
@@ -22,53 +23,68 @@ export function IconRail({
   return (
     <div
       style={{
-        width: "48px",
         flexShrink: 0,
-        borderRight: `1px solid ${sp.borderPrimary}`,
-        background: sp.white,
-        paddingTop: "8px",
+        height: "100%",
+        padding: "8px 0",
         display: "flex",
         flexDirection: "column",
         gap: "2px",
+        background: sp.white,
+        borderRight: `1px solid ${sp.borderSub}`,
       }}
     >
       {TABS.map(({ id, label, Icon }) => {
         const isActive = id === active;
         return (
-          <div
+          <button
             key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            title={label}
+            aria-label={label}
+            aria-pressed={isActive}
             style={{
+              position: "relative",
+              width: "48px",
               height: "48px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              borderLeft: `3px solid ${isActive ? sp.blue : "transparent"}`,
+              padding: "4px 8px",
+              border: "none",
+              background: isActive ? sp.bg : "transparent",
+              cursor: "pointer",
             }}
           >
-            <button
-              type="button"
-              onClick={() => onChange(id)}
-              title={label}
-              aria-label={label}
-              aria-pressed={isActive}
+            {/* Overlaid rather than a border, so the 2px edge does not widen
+                the rail past the design's 48px. */}
+            {isActive && (
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "2px",
+                  background: sp.blue,
+                }}
+              />
+            )}
+            <span
               style={{
                 width: "32px",
                 height: "32px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                marginLeft: "-3px",
-                border: "none",
-                borderRadius: "4px",
-                background: isActive ? sp.blueSubtle : "none",
-                color: isActive ? sp.blue : sp.textTertiary,
-                cursor: "pointer",
-                padding: 0,
+                borderRadius: "2px",
+                color: isActive ? sp.blue : sp.textSecondary,
               }}
             >
-              <Icon size={18} />
-            </button>
-          </div>
+              <Icon size={20} />
+            </span>
+          </button>
         );
       })}
     </div>

@@ -6,8 +6,8 @@ import { IconButton } from "./IconButton";
 import { FieldControl } from "./FieldControl";
 
 /**
- * Right-hand 240px panel. Always rendered — when no template is selected the
- * body is simply empty, which is the default state in the design.
+ * Right-hand 240px panel (node 5909:69105). Always rendered — when no template
+ * is selected the body is empty, which is the design's default state.
  */
 export function CustomizePanel({
   template,
@@ -27,37 +27,37 @@ export function CustomizePanel({
       style={{
         width: "240px",
         flexShrink: 0,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
+        gap: "16px",
+        padding: "8px",
         background: sp.white,
-        borderLeft: `1px solid ${sp.borderPrimary}`,
+        borderLeft: `1px solid ${sp.borderSub}`,
         overflow: "hidden",
       }}
     >
-      {/* Header row */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-end",
           justifyContent: "space-between",
-          height: "32px",
-          margin: "8px",
+          width: "100%",
           flexShrink: 0,
         }}
       >
         <TabLabel>Customize</TabLabel>
         <IconButton title="Reset to defaults" onClick={onReset} disabled={!canReset}>
-          <RotateCcw size={15} />
+          <RotateCcw size={20} />
         </IconButton>
       </div>
 
-      {/* Fields */}
       <div
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          padding: template ? "8px 16px 16px" : 0,
+          padding: template ? "0 8px 8px" : 0,
           display: "flex",
           flexDirection: "column",
           gap: "18px",

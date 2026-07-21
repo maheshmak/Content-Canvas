@@ -25,12 +25,12 @@ export function FindUsComposition({ inputProps }: Props) {
       <div
         className="absolute left-1/2 flex justify-center"
         style={{
-          top: "18px",
+          top: "34px",
           transform: `translate(-50%, ${pinY + pinBounce}px)`,
           opacity: pinOpacity,
         }}
       >
-        <svg width="56" height="68" viewBox="0 0 40 48" fill="none">
+        <svg width="96" height="116" viewBox="0 0 40 48" fill="none">
           <path d="M20 0C9 0 0 9 0 20C0 34 20 48 20 48C20 48 40 34 40 20C40 9 31 0 20 0Z" fill={accentColor} />
           <circle cx="20" cy="20" r="8" fill="white" />
         </svg>
@@ -41,27 +41,27 @@ export function FindUsComposition({ inputProps }: Props) {
         className="absolute bottom-0 left-0 right-0"
         style={{
           background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.65) 60%, transparent 100%)",
-          padding: "32px 40px 28px",
+          padding: "48px 56px 48px",
           opacity: cardOpacity,
           transform: `translateY(${cardY}px)`,
         }}
       >
         {/* Address */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" style={{ flexShrink: 0, marginTop: "4px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "20px", marginBottom: "24px" }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" style={{ flexShrink: 0, marginTop: "4px" }}>
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
           </svg>
-          <p style={{ fontSize: "32px", fontWeight: 600, color: "#fff", lineHeight: 1.35, textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+          <p style={{ fontSize: "54px", fontWeight: 600, color: "#fff", lineHeight: 1.35, textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
             {address}
           </p>
         </div>
 
         {/* Phone */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" style={{ flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px", marginBottom: "28px" }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" style={{ flexShrink: 0 }}>
             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6.08 6.08l1.15-1.15a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
           </svg>
-          <p style={{ fontSize: "32px", fontWeight: 600, color: "#fff" }}>{phone}</p>
+          <p style={{ fontSize: "54px", fontWeight: 600, color: "#fff" }}>{phone}</p>
         </div>
 
         {/* Hours */}
@@ -69,16 +69,16 @@ export function FindUsComposition({ inputProps }: Props) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
+            gap: "20px",
             opacity: hoursOpacity,
             borderTop: `1px solid ${accentColor}40`,
-            paddingTop: "14px",
+            paddingTop: "24px",
           }}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" style={{ flexShrink: 0 }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" style={{ flexShrink: 0 }}>
             <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
           </svg>
-          <p style={{ fontSize: "28px", fontWeight: 400, color: "rgba(255,255,255,0.78)" }}>{hours}</p>
+          <p style={{ fontSize: "46px", fontWeight: 400, color: "rgba(255,255,255,0.78)" }}>{hours}</p>
         </div>
       </div>
     </div>

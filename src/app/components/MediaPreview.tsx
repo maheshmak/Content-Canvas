@@ -1,7 +1,8 @@
+import { useRef, useState, useLayoutEffect } from "react";
 import type { ReactNode } from "react";
 import type { TemplateDef, FieldValues } from "../templates/schema";
 import { sp, FONT } from "../theme";
-import { FrameProvider, useFramePlayer, PlayerControls } from "./AnimationPlayer";
+import { FrameProvider, useFramePlayer } from "./AnimationPlayer";
 
 export interface MediaItem {
   id: string;
@@ -11,28 +12,34 @@ export interface MediaItem {
 
 export type MediaType = "image" | "video";
 
-/** Media frame size from the design (node 5909:69156). */
+/** Media frame width from the design (node 5918:69156); height fills the column. */
 const MEDIA_W = 360;
-const MEDIA_H = 646;
 
 /**
- * Compositions are authored at their full canvas size (1080x1920) using
- * absolute pixel units — 100px type, a 260px badge. They must therefore be
- * rendered at that native size and scaled down to the preview frame, exactly as
- * a video player would. Dropping them into a 360px box unscaled renders them
- * roughly 3x too large.
+ * Compositions are authored on their full export canvas (1080x1920) in absolute
+ * pixels — 100px type, a 260px badge. They must render at that native size and
+ * be scaled to the preview frame, the way a video player does. Dropping them in
+ * unscaled renders them roughly 3x oversized.
+ *
+ * The frame's height comes from flex layout, so the scale is measured rather
+ * than assumed — that keeps the overlay correct when the modal is clamped on a
+ * short viewport.
  */
 function ScaledComposition({
   template,
   fieldValues,
   frame,
+  boxW,
+  boxH,
 }: {
   template: TemplateDef;
   fieldValues: FieldValues;
   frame: number;
+  boxW: number;
+  boxH: number;
 }) {
-  // Cover the frame, so no letterboxing shows through against the photo.
-  const scale = Math.max(MEDIA_W / template.width, MEDIA_H / template.height);
+  if (!boxW || !boxH) return null;
+  const scale = Math.max(boxW / template.width, boxH / template.height);
 
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 2 }}>
@@ -60,16 +67,36 @@ function ScaledComposition({
   );
 }
 
-/** The 360x646 media frame: photo underneath, template overlay on top. */
-function MediaFrame({ media, children }: { media: MediaItem; children?: ReactNode }) {
+/** Measures its own box so the overlay can be scaled to it. */
+function MediaFrame({
+  media,
+  render,
+}: {
+  media: MediaItem;
+  render?: (size: { w: number; h: number }) => ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div
+      ref={ref}
       style={{
         position: "relative",
         width: `${MEDIA_W}px`,
-        height: `${MEDIA_H}px`,
-        flexShrink: 0,
-        borderRadius: "4px",
+        flex: 1,
+        minHeight: 0,
+        borderRadius: "8px",
         overflow: "hidden",
         background: "#000",
       }}
@@ -86,7 +113,7 @@ function MediaFrame({ media, children }: { media: MediaItem; children?: ReactNod
           display: "block",
         }}
       />
-      {children}
+      {render?.({ w: size.w, h: size.h })}
     </div>
   );
 }
@@ -120,7 +147,10 @@ function EmptyState() {
   );
 }
 
-/** Video posts: the composition plays, with a transport bar below the frame. */
+/**
+ * Video posts: the composition loops continuously. There is deliberately no
+ * transport bar — it sat on top of the artwork and competed with it.
+ */
 function VideoPreview({
   media,
   template,
@@ -130,32 +160,29 @@ function VideoPreview({
   template: TemplateDef;
   fieldValues: FieldValues;
 }) {
-  const { frame, playing, toggle, restart, seek } = useFramePlayer({
+  const { frame } = useFramePlayer({
     durationInFrames: template.durationInFrames,
     fps: template.fps,
     loop: true,
   });
 
   return (
-    <MediaFrame media={media}>
-      <ScaledComposition template={template} fieldValues={fieldValues} frame={frame} />
-      <PlayerControls
-        frame={frame}
-        playing={playing}
-        durationInFrames={template.durationInFrames}
-        fps={template.fps}
-        onToggle={toggle}
-        onRestart={restart}
-        onSeek={seek}
-      />
-    </MediaFrame>
+    <MediaFrame
+      media={media}
+      render={({ w, h }) => (
+        <ScaledComposition
+          template={template}
+          fieldValues={fieldValues}
+          frame={frame}
+          boxW={w}
+          boxH={h}
+        />
+      )}
+    />
   );
 }
 
-/**
- * Center column. The media is contained at 360x646 as in the design — not
- * full-bleed.
- */
+/** Center column (node 5909:68171): 16px padding, media centred at 360 wide. */
 export function MediaPreview({
   media,
   template,
@@ -172,15 +199,14 @@ export function MediaPreview({
       style={{
         flex: 1,
         minWidth: 0,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        // Centred rather than padded: the content card's 1px border leaves 676px
-        // of inner height against a 646px frame, so a fixed 16px padding would
-        // overflow by 2px and introduce a scrollbar.
         justifyContent: "center",
+        gap: "16px",
+        padding: "16px",
         background: sp.white,
-        overflow: "hidden",
       }}
     >
       {template && mediaType === "video" ? (
@@ -191,20 +217,25 @@ export function MediaPreview({
           fieldValues={fieldValues}
         />
       ) : (
-        <MediaFrame media={media}>
-          {template ? (
-            // Image posts hold the last frame, where every interpolation has
-            // settled, giving the finished composed look.
-            <ScaledComposition
-              key={template.id}
-              template={template}
-              fieldValues={fieldValues}
-              frame={template.durationInFrames - 1}
-            />
-          ) : (
-            <EmptyState />
-          )}
-        </MediaFrame>
+        <MediaFrame
+          media={media}
+          render={({ w, h }) =>
+            template ? (
+              // Image posts hold the last frame, where every interpolation has
+              // settled, giving the finished composed look.
+              <ScaledComposition
+                key={template.id}
+                template={template}
+                fieldValues={fieldValues}
+                frame={template.durationInFrames - 1}
+                boxW={w}
+                boxH={h}
+              />
+            ) : (
+              <EmptyState />
+            )
+          }
+        />
       )}
     </div>
   );

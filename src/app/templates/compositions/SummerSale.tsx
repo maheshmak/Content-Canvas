@@ -26,17 +26,17 @@ export function SummerSaleComposition({ inputProps }: Props) {
       {/* "FLASH SALE" pill — top center */}
       <div
         className="absolute top-0 left-0 right-0 flex justify-center"
-        style={{ paddingTop: "32px", opacity: labelOpacity }}
+        style={{ paddingTop: "48px", opacity: labelOpacity }}
       >
         <div style={{
           display: "inline-flex",
           alignItems: "center",
-          padding: "8px 24px",
+          padding: "14px 40px",
           borderRadius: "60px",
           background: bgColor,
           boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
         }}>
-          <p style={{ fontSize: "28px", fontWeight: 800, color: "#fff", letterSpacing: "3px" }}>
+          <p style={{ fontSize: "46px", fontWeight: 800, color: "#fff", letterSpacing: "5px" }}>
             FLASH SALE
           </p>
         </div>
@@ -56,15 +56,15 @@ export function SummerSaleComposition({ inputProps }: Props) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          width: "260px",
-          height: "260px",
+          width: "440px",
+          height: "440px",
           borderRadius: "50%",
           background: bgColor,
           boxShadow: `0 16px 60px rgba(0,0,0,0.4)`,
           transform: `scale(${pulse})`,
         }}>
-          <div style={{ fontSize: "100px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>{discount}%</div>
-          <div style={{ fontSize: "36px", fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "5px" }}>OFF</div>
+          <div style={{ fontSize: "170px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>{discount}%</div>
+          <div style={{ fontSize: "62px", fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "8px" }}>OFF</div>
         </div>
       </div>
 
@@ -73,16 +73,16 @@ export function SummerSaleComposition({ inputProps }: Props) {
         className="absolute bottom-0 left-0 right-0"
         style={{
           background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)",
-          padding: "32px 40px 28px",
+          padding: "48px 56px 48px",
         }}
       >
         <div style={{ opacity: headlineOpacity, transform: `translateY(${headlineY}px)`, marginBottom: "8px" }}>
-          <h2 style={{ fontSize: "64px", fontWeight: 800, color: "#fff", textTransform: "uppercase", letterSpacing: "1px", textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>
+          <h2 style={{ fontSize: "104px", fontWeight: 800, color: "#fff", textTransform: "uppercase", letterSpacing: "1px", textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>
             {headline}
           </h2>
         </div>
         <div style={{ opacity: taglineOpacity }}>
-          <p style={{ fontSize: "32px", fontWeight: 400, color: "rgba(255,255,255,0.85)" }}>{tagline}</p>
+          <p style={{ fontSize: "52px", fontWeight: 400, color: "rgba(255,255,255,0.85)" }}>{tagline}</p>
         </div>
       </div>
     </div>
