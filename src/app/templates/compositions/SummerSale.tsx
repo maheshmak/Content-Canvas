@@ -1,4 +1,5 @@
-import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { createInterpolate } from "../../components/AnimationPlayer";
 import { AnchoredStack, AnchoredItem, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -8,7 +9,7 @@ interface Props {
 
 export function SummerSaleComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
-  const interpolate = useInterpolate();
+  const interpolate = createInterpolate(inputProps.animationStyle as string | undefined);
   const { width, height } = useVideoConfig();
   const headline = String(inputProps.headline ?? "Summer Sale");
   const discount = Number(inputProps.discount ?? 30);
@@ -26,7 +27,7 @@ export function SummerSaleComposition({ inputProps }: Props) {
   const pulse = interpolate(frame % 60, [0, 30, 60], [1, 1.06, 1]);
 
   return (
-    <div className="w-full h-full relative overflow-hidden" style={{ background: "transparent" }}>
+    <AbsoluteFill style={{ overflow: "hidden" }}>
       <Scrim anchor={textAnchor} opacity={headlineOpacity} />
 
       {/* Feature: the discount badge, placed independently of the copy. */}
@@ -99,6 +100,6 @@ export function SummerSaleComposition({ inputProps }: Props) {
           {tagline}
         </p>
       </AnchoredStack>
-    </div>
+    </AbsoluteFill>
   );
 }

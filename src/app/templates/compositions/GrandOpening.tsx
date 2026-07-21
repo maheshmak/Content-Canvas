@@ -1,4 +1,5 @@
-import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { createInterpolate } from "../../components/AnimationPlayer";
 import { AnchoredStack, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -8,7 +9,7 @@ interface Props {
 
 export function GrandOpeningComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
-  const interpolate = useInterpolate();
+  const interpolate = createInterpolate(inputProps.animationStyle as string | undefined);
   const { width, height } = useVideoConfig();
   const businessName = String(inputProps.businessName ?? "The Corner Cafe");
   const date = String(inputProps.date ?? "July 28, 2025");
@@ -31,15 +32,16 @@ export function GrandOpeningComposition({ inputProps }: Props) {
   const dateOpacity = interpolate(frame, [54, 70], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
-    <div className="w-full h-full relative overflow-hidden" style={{ background: "transparent" }}>
+    <AbsoluteFill style={{ overflow: "hidden" }}>
       {confetti.map((c, i) => {
         const y = interpolate(frame, [c.delay, c.delay + 55], [-5, 108], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
         const opacity = interpolate(frame, [c.delay, c.delay + 15], [0, 0.9], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
         return (
           <div
             key={i}
-            className="absolute pointer-events-none"
             style={{
+              position: "absolute",
+              pointerEvents: "none",
               left: `${c.x}%`,
               top: `${y}%`,
               opacity,
@@ -106,6 +108,6 @@ export function GrandOpeningComposition({ inputProps }: Props) {
           {date}
         </span>
       </AnchoredStack>
-    </div>
+    </AbsoluteFill>
   );
 }

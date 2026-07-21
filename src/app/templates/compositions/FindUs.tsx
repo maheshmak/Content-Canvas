@@ -1,4 +1,5 @@
-import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { createInterpolate } from "../../components/AnimationPlayer";
 import { AnchoredStack, AnchoredItem, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -38,7 +39,7 @@ function Row({
 
 export function FindUsComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
-  const interpolate = useInterpolate();
+  const interpolate = createInterpolate(inputProps.animationStyle as string | undefined);
   const { width, height } = useVideoConfig();
   const address = String(inputProps.address ?? "123 Main Street, Downtown");
   const phone = String(inputProps.phone ?? "(555) 123-4567");
@@ -65,7 +66,7 @@ export function FindUsComposition({ inputProps }: Props) {
   } as const;
 
   return (
-    <div className="w-full h-full relative overflow-hidden" style={{ background: "transparent" }}>
+    <AbsoluteFill style={{ overflow: "hidden" }}>
       <Scrim anchor={textAnchor} opacity={cardOpacity} />
 
       {/* Feature: the map pin, placed independently of the copy. */}
@@ -122,6 +123,6 @@ export function FindUsComposition({ inputProps }: Props) {
           </Row>
         </div>
       </AnchoredStack>
-    </div>
+    </AbsoluteFill>
   );
 }

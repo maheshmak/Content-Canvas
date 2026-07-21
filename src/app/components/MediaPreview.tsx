@@ -1,9 +1,9 @@
-import { useRef, useState, useLayoutEffect } from "react";
+import { useRef, useState, useLayoutEffect, useEffect } from "react";
 import type { ReactNode } from "react";
+import { Player, Thumbnail } from "@remotion/player";
+import type { PlayerRef } from "@remotion/player";
 import type { TemplateDef, FieldValues } from "../templates/schema";
 import { sp } from "../theme";
-import { FrameProvider, useFramePlayer } from "./AnimationPlayer";
-import type { EasingName } from "./AnimationPlayer";
 
 export interface MediaItem {
   id: string;
@@ -13,69 +13,25 @@ export interface MediaItem {
 
 export type MediaType = "image" | "video";
 
-/** Media frame size from the design (node 5918:69156). */
-const MEDIA_W = 360;
-const MEDIA_H = 646;
-
 /**
- * Compositions are authored on their full export canvas (1080x1920) in absolute
- * pixels — 100px type, a 260px badge. They must render at that native size and
- * be scaled to the preview frame, the way a video player does.
+ * Preview frame, matching the compositions' 9:16 canvas exactly.
+ *
+ * The design specifies 360x646, which is ~1% off 9:16 and would letterbox
+ * inside the player. 360x640 is an exact match, so the preview is
+ * pixel-for-pixel what will export. Six pixels, invisible.
  */
-function ScaledComposition({
-  template,
-  fieldValues,
-  frame,
-  boxW,
-  boxH,
-}: {
-  template: TemplateDef;
-  fieldValues: FieldValues;
-  frame: number;
-  boxW: number;
-  boxH: number;
-}) {
-  if (!boxW || !boxH) return null;
-  const scale = Math.max(boxW / template.width, boxH / template.height);
-
-  return (
-    <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 2 }}>
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          width: `${template.width}px`,
-          height: `${template.height}px`,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-          transformOrigin: "center center",
-        }}
-      >
-        <FrameProvider
-          frame={frame}
-          fps={template.fps}
-          width={template.width}
-          height={template.height}
-          easing={(fieldValues.animationStyle as EasingName) ?? "ease-out"}
-        >
-          <template.component inputProps={fieldValues} />
-        </FrameProvider>
-      </div>
-    </div>
-  );
-}
+const MEDIA_W = 360;
+const MEDIA_H = 640;
 
 /**
- * Fits the media frame into whatever space the column has, at the design's
- * fixed 360:646 aspect ratio, never larger than 360x646.
+ * Fits the media frame into whatever space the column has, at a fixed 9:16,
+ * never larger than the design size.
  *
  * The edge rule this enforces: the frame shrinks *as a whole* on small
  * viewports instead of letting flex layout squash its height. A squashed box
- * changes the aspect ratio, and the cover-scaled overlay then crops the canvas
- * top and bottom — cutting through composition content that sits well inside
- * its own safe margins. Keeping the ratio fixed means cover-scale is exact-fit
- * and nothing is ever clipped; the column's 16px padding stays intact around
- * the frame at every size.
+ * changes the aspect ratio, which crops composition content that sits well
+ * inside its own safe margins. Fixed ratio means nothing is ever clipped, and
+ * the column's 16px padding stays intact at every size.
  */
 function FittedFrame({
   media,
@@ -103,7 +59,6 @@ function FittedFrame({
     };
   }, []);
 
-  // Largest 360:646 box that fits the available space, capped at design size.
   const w = Math.floor(Math.min(MEDIA_W, avail.w, (avail.h * MEDIA_W) / MEDIA_H));
   const h = Math.floor((w * MEDIA_H) / MEDIA_W);
 
@@ -151,42 +106,59 @@ function FittedFrame({
   );
 }
 
-/**
- * Video posts: the composition loops continuously. There is deliberately no
- * transport bar — it sat on top of the artwork and competed with it.
- */
-function VideoPreview({
-  media,
-  template,
-  fieldValues,
-}: {
-  media: MediaItem;
-  template: TemplateDef;
-  fieldValues: FieldValues;
-}) {
-  const { frame } = useFramePlayer({
-    durationInFrames: template.durationInFrames,
-    fps: template.fps,
-    loop: true,
-  });
+/** Wrapper holding the composition above the photo. */
+const overlayStyle = {
+  position: "absolute" as const,
+  inset: 0,
+  zIndex: 2,
+};
 
-  return (
-    <FittedFrame
-      media={media}
-      render={({ w, h }) => (
-        <ScaledComposition
-          template={template}
-          fieldValues={fieldValues}
-          frame={frame}
-          boxW={w}
-          boxH={h}
-        />
-      )}
-    />
-  );
+type PlayerProps = React.ComponentProps<typeof Player>;
+
+/**
+ * Looping preview for video posts.
+ *
+ * Playback is started through the player ref rather than the `autoPlay` prop:
+ * the modal opens without a user gesture, and `autoPlay` alone leaves the
+ * player parked on frame 0. Re-runs when the template changes so a freshly
+ * mounted player starts moving too.
+ */
+function LoopingPlayer(props: PlayerProps & { templateId: string }) {
+  const ref = useRef<PlayerRef>(null);
+  const { templateId, ...playerProps } = props;
+
+  useEffect(() => {
+    const player = ref.current;
+    if (!player) return;
+
+    // `autoPlay` alone, and even play() alone, can leave the player reporting
+    // isPlaying:true while its clock stays pinned to frame 0 — the internal
+    // loop never gets going. Seeking first reliably kicks it awake.
+    const start = () => {
+      player.seekTo(0);
+      player.play();
+    };
+    start();
+
+    // If the frame still hasn't moved shortly after, start it again: the modal
+    // can mount while the tab is backgrounded, and the first attempt is lost.
+    const check = window.setTimeout(() => {
+      if (player.getCurrentFrame() === 0) start();
+    }, 300);
+
+    return () => window.clearTimeout(check);
+  }, [templateId]);
+
+  return <Player ref={ref} {...playerProps} loop controls={false} />;
 }
 
-/** Center column (node 5909:68171): 16px padding, media centred at 360 wide. */
+/**
+ * Center column (node 5909:68171): 16px padding, media centred at 360 wide.
+ *
+ * Remotion's Player and Thumbnail scale the 1080x1920 composition into the
+ * frame themselves, so there is no manual transform maths here — they take the
+ * composition's true dimensions and the box size, and do the fitting.
+ */
 export function MediaPreview({
   media,
   template,
@@ -213,32 +185,44 @@ export function MediaPreview({
         background: sp.white,
       }}
     >
-      {template && mediaType === "video" ? (
-        <VideoPreview
-          key={template.id}
-          media={media}
-          template={template}
-          fieldValues={fieldValues}
-        />
-      ) : (
-        <FittedFrame
-          media={media}
-          render={({ w, h }) =>
-            template ? (
-              // Image posts hold the last frame, where every interpolation has
-              // settled, giving the finished composed look.
-              <ScaledComposition
-                key={template.id}
-                template={template}
-                fieldValues={fieldValues}
-                frame={template.durationInFrames - 1}
-                boxW={w}
-                boxH={h}
-              />
-            ) : null
-          }
-        />
-      )}
+      <FittedFrame
+        media={media}
+        render={({ w, h }) => {
+          // No template selected: the photo alone. The prompt to pick one
+          // lives in the Customize panel.
+          if (!template) return null;
+          const shared = {
+            component: template.component,
+            // Nested deliberately: Remotion spreads inputProps as the
+            // component's props, and our compositions take a single
+            // `inputProps` prop. Flattened in the layer-model phase, where the
+            // prop type widens anyway.
+            inputProps: { inputProps: fieldValues },
+            durationInFrames: template.durationInFrames,
+            fps: template.fps,
+            compositionWidth: template.width,
+            compositionHeight: template.height,
+            // Transparent so the photo underneath shows through; Remotion's
+            // default render background is opaque.
+            style: { width: w, height: h, background: "transparent" },
+          };
+          return (
+            <div style={overlayStyle}>
+              {mediaType === "video" ? (
+                <LoopingPlayer {...shared} key={template.id} templateId={template.id} />
+              ) : (
+                // Image posts hold the last frame, where every interpolation
+                // has settled, giving the finished composed look.
+                <Thumbnail
+                  {...shared}
+                  key={template.id}
+                  frameToDisplay={template.durationInFrames - 1}
+                />
+              )}
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

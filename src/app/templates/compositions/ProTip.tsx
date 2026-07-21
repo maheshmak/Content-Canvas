@@ -1,4 +1,5 @@
-import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { createInterpolate } from "../../components/AnimationPlayer";
 import { AnchoredStack, AnchoredItem, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -8,7 +9,7 @@ interface Props {
 
 export function ProTipComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
-  const interpolate = useInterpolate();
+  const interpolate = createInterpolate(inputProps.animationStyle as string | undefined);
   const { width, height } = useVideoConfig();
   const tipNumber = Number(inputProps.tipNumber ?? 1);
   const tipText = String(inputProps.tipText ?? "Always use heat protectant before styling your hair");
@@ -25,7 +26,7 @@ export function ProTipComposition({ inputProps }: Props) {
   const pulse = interpolate(frame % 60, [0, 30, 60], [1, 1.07, 1]);
 
   return (
-    <div className="w-full h-full relative overflow-hidden" style={{ background: "transparent" }}>
+    <AbsoluteFill style={{ overflow: "hidden" }}>
       <Scrim anchor={textAnchor} opacity={textOpacity} />
 
       {/* Feature: the numbered tip badge. */}
@@ -84,6 +85,6 @@ export function ProTipComposition({ inputProps }: Props) {
           {ctaText}
         </span>
       </AnchoredStack>
-    </div>
+    </AbsoluteFill>
   );
 }

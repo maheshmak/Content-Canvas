@@ -1,4 +1,6 @@
-import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { createInterpolate } from "../../components/AnimationPlayer";
+import type { Interpolate } from "../../components/AnimationPlayer";
 import { AnchoredStack, Scrim } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -6,8 +8,21 @@ interface Props {
   inputProps: { [key: string]: string | number | undefined };
 }
 
-function Star({ filled, color, delay, frame }: { filled: boolean; color: string; delay: number; frame: number }) {
-  const interpolate = useInterpolate();
+function Star({
+  filled,
+  color,
+  delay,
+  frame,
+  interpolate,
+}: {
+  filled: boolean;
+  color: string;
+  delay: number;
+  frame: number;
+  // Passed down rather than rebuilt here: the easing belongs to the template,
+  // and createInterpolate needs inputProps, which a leaf component shouldn't see.
+  interpolate: Interpolate;
+}) {
   const scale = interpolate(frame, [delay, delay + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const opacity = interpolate(frame, [delay, delay + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
@@ -21,7 +36,7 @@ function Star({ filled, color, delay, frame }: { filled: boolean; color: string;
 
 export function StarRatingComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
-  const interpolate = useInterpolate();
+  const interpolate = createInterpolate(inputProps.animationStyle as string | undefined);
   const { width, height } = useVideoConfig();
   const rating = Math.min(5, Math.max(1, Number(inputProps.rating ?? 5)));
   const reviewText = String(inputProps.reviewText ?? "Best haircut in town!");
@@ -35,7 +50,7 @@ export function StarRatingComposition({ inputProps }: Props) {
   const nameOpacity = interpolate(frame, [50, 65], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
-    <div className="w-full h-full relative overflow-hidden" style={{ background: "transparent" }}>
+    <AbsoluteFill style={{ overflow: "hidden" }}>
       <Scrim anchor={textAnchor} opacity={cardOpacity} />
 
       <AnchoredStack anchor={textAnchor} width={width} height={height} gap={28}>
@@ -49,7 +64,7 @@ export function StarRatingComposition({ inputProps }: Props) {
           }}
         >
           {[0, 1, 2, 3, 4].map((i) => (
-            <Star key={i} filled={i < rating} color={accentColor} delay={i * 7} frame={frame} />
+            <Star key={i} filled={i < rating} color={accentColor} delay={i * 7} frame={frame} interpolate={interpolate} />
           ))}
         </div>
 
@@ -76,6 +91,6 @@ export function StarRatingComposition({ inputProps }: Props) {
           <p style={{ margin: 0, fontSize: "46px", fontWeight: 600, color: accentColor }}>{customerName}</p>
         </div>
       </AnchoredStack>
-    </div>
+    </AbsoluteFill>
   );
 }

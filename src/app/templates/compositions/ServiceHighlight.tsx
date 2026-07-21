@@ -1,4 +1,5 @@
-import { useCurrentFrame, useInterpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { createInterpolate } from "../../components/AnimationPlayer";
 import { AnchoredStack, Scrim, splitAnchor } from "../../components/layout";
 import type { Anchor } from "../schema";
 
@@ -8,7 +9,7 @@ interface Props {
 
 export function ServiceHighlightComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
-  const interpolate = useInterpolate();
+  const interpolate = createInterpolate(inputProps.animationStyle as string | undefined);
   const { width, height } = useVideoConfig();
   const serviceName = String(inputProps.serviceName ?? "Classic Haircut");
   const price = String(inputProps.price ?? "$35");
@@ -28,13 +29,15 @@ export function ServiceHighlightComposition({ inputProps }: Props) {
   const { h } = splitAnchor(textAnchor);
 
   return (
-    <div className="w-full h-full relative overflow-hidden" style={{ background: "transparent" }}>
+    <AbsoluteFill style={{ overflow: "hidden" }}>
       <Scrim anchor={textAnchor} opacity={barOpacity} />
 
       {h !== "center" && (
         <div
-          className="absolute top-0 bottom-0"
           style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
             [h]: 0,
             width: "10px",
             background: accentColor,
@@ -105,6 +108,6 @@ export function ServiceHighlightComposition({ inputProps }: Props) {
           {description}
         </p>
       </AnchoredStack>
-    </div>
+    </AbsoluteFill>
   );
 }
