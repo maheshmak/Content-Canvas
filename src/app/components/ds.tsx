@@ -1,41 +1,57 @@
+import { useState } from "react";
 import type { ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, InputHTMLAttributes } from "react";
 import { sp, space, radius, type, FONT } from "../theme";
 
 /**
  * SocialPilot form primitives.
  *
- * These reproduce the library's Figma components (Input-Text Area, node
- * 5909:67898 — 16px padding, 2px radius, 14px/18px Body/Sm/Regular) using the
- * design tokens. They are local implementations, not imports: the
- * DesignSystemWeb kit that ships with this project is CSS-only — tokens and
- * typography classes, no React components — so there is nothing to import. If
- * SocialPilot publishes a React package, these are the seams to swap.
+ * Specs come from the Design System - Web library (file O87peGRdJA15qba27qOB20,
+ * page "Inputs"), read off the real component sets rather than inferred:
+ *
+ *   Input-Text Single  13662:44321  h32, px8,  radius 2
+ *   Input-Dropdown     13702:49886  h32, pl8/pr4, radius 2
+ *   Input-Text Area    13702:53146  h120, p16, radius 2
+ *
+ * State colours are shared across all three:
+ *   default   fill surface/input-primary   border border/input-secondary
+ *   hover     fill surface/input-hover     border border/input-secondary
+ *   active    fill surface/input-active    border border/input-active
+ *   disabled  fill surface/input-primary-disabled  border border/input-secondary-disabled
+ *   error     fill surface/input-primary   border border/danger
+ *
+ * These are local implementations: the design system publishes Figma components
+ * and CSS tokens, but no React package. This file is the single seam to swap if
+ * one ever ships.
  */
 
-const controlBase = {
+type Visual = { focused: boolean; disabled?: boolean; invalid?: boolean };
+
+function surface({ focused, disabled, invalid }: Visual) {
+  if (disabled) return { background: sp.inputDisabled, borderColor: sp.borderInputDisabled };
+  if (invalid) return { background: sp.inputBg, borderColor: sp.borderDanger };
+  if (focused) return { background: sp.inputActive, borderColor: sp.borderActive };
+  return { background: sp.inputBg, borderColor: sp.borderInput };
+}
+
+const shared = {
   width: "100%",
   boxSizing: "border-box" as const,
-  padding: space[16],
   borderRadius: radius[2],
-  border: `1px solid ${sp.borderSub}`,
-  background: sp.white,
+  borderWidth: "1px",
+  borderStyle: "solid" as const,
   color: sp.textPrimary,
   fontFamily: FONT,
   fontSize: type.s.size,
   lineHeight: type.s.line,
   fontWeight: 400,
   outline: "none",
-  transition: "border-color 0.12s",
+  transition: "background-color 0.12s, border-color 0.12s",
 };
 
-function focusRing(e: { currentTarget: HTMLElement }) {
-  e.currentTarget.style.borderColor = sp.borderActive;
-}
-function blurRing(e: { currentTarget: HTMLElement }) {
-  e.currentTarget.style.borderColor = sp.borderSub;
-}
-
-/** Label row, with optional trailing hint (character counter, value readout). */
+/**
+ * Label row above a control. The library's label is 14px *regular* (not
+ * semibold), with a 4px gap to any trailing adornment and 8px to the control.
+ */
 export function Field({
   label,
   hint,
@@ -53,15 +69,10 @@ export function Field({
     hintTone === "danger" ? sp.danger : hintTone === "brand" ? sp.blue : sp.textTertiary;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: space[8], fontFamily: FONT }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: space[8] }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: space[4] }}>
         <label
           htmlFor={htmlFor}
-          style={{
-            fontSize: type.s.size,
-            lineHeight: type.s.line,
-            fontWeight: 600,
-            color: sp.textPrimary,
-          }}
+          style={{ fontSize: type.s.size, lineHeight: type.s.line, fontWeight: 400, color: sp.textPrimary }}
         >
           {label}
         </label>
@@ -84,46 +95,88 @@ export function Field({
   );
 }
 
-export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      {...props}
-      style={{ ...controlBase, resize: "none", ...props.style }}
-      onFocus={(e) => { focusRing(e); props.onFocus?.(e); }}
-      onBlur={(e) => { blurRing(e); props.onBlur?.(e); }}
-    />
-  );
-}
-
-export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
+/** Input-Text Single — 32px tall, 8px horizontal padding. */
+export function TextInput({
+  invalid,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+  const [focused, setFocused] = useState(false);
+  const [hover, setHover] = useState(false);
+  const v = surface({ focused, disabled: props.disabled, invalid });
   return (
     <input
       {...props}
-      style={{ ...controlBase, ...props.style }}
-      onFocus={(e) => { focusRing(e); props.onFocus?.(e); }}
-      onBlur={(e) => { blurRing(e); props.onBlur?.(e); }}
+      onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+      onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+      onMouseEnter={(e) => { setHover(true); props.onMouseEnter?.(e); }}
+      onMouseLeave={(e) => { setHover(false); props.onMouseLeave?.(e); }}
+      style={{
+        ...shared,
+        height: "32px",
+        padding: `0 ${space[8]}`,
+        ...v,
+        ...(hover && !focused && !props.disabled && !invalid ? { background: sp.inputHover } : null),
+        ...props.style,
+      }}
     />
   );
 }
 
-/** Native select styled to the library's input treatment. */
+/** Input-Text Area — 16px padding, 120px tall. */
+export function TextArea({
+  invalid,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { invalid?: boolean }) {
+  const [focused, setFocused] = useState(false);
+  const [hover, setHover] = useState(false);
+  const v = surface({ focused, disabled: props.disabled, invalid });
+  return (
+    <textarea
+      {...props}
+      onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+      onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+      onMouseEnter={(e) => { setHover(true); props.onMouseEnter?.(e); }}
+      onMouseLeave={(e) => { setHover(false); props.onMouseLeave?.(e); }}
+      style={{
+        ...shared,
+        minHeight: "96px",
+        padding: space[16],
+        resize: "none",
+        ...v,
+        ...(hover && !focused && !props.disabled && !invalid ? { background: sp.inputHover } : null),
+        ...props.style,
+      }}
+    />
+  );
+}
+
+/** Input-Dropdown — 32px tall, 8px left / 4px right for the chevron. */
 export function Select({
   options,
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & { options: { value: string; label: string }[] }) {
+  const [focused, setFocused] = useState(false);
+  const [hover, setHover] = useState(false);
+  const v = surface({ focused, disabled: props.disabled });
   return (
     <div style={{ position: "relative", width: "100%" }}>
       <select
         {...props}
+        onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+        onMouseEnter={(e) => { setHover(true); props.onMouseEnter?.(e); }}
+        onMouseLeave={(e) => { setHover(false); props.onMouseLeave?.(e); }}
         style={{
-          ...controlBase,
-          paddingRight: space[32],
+          ...shared,
+          height: "32px",
+          paddingLeft: space[8],
+          paddingRight: space[24],
           appearance: "none",
           cursor: "pointer",
+          ...v,
+          ...(hover && !focused && !props.disabled ? { background: sp.inputHover } : null),
           ...props.style,
         }}
-        onFocus={(e) => { focusRing(e); props.onFocus?.(e); }}
-        onBlur={(e) => { blurRing(e); props.onBlur?.(e); }}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -133,19 +186,19 @@ export function Select({
       </select>
       <svg
         aria-hidden
-        width="12"
-        height="12"
-        viewBox="0 0 12 12"
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
         fill="none"
-        style={{ position: "absolute", right: space[12], top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+        style={{ position: "absolute", right: space[4], top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
       >
-        <path d="M2.5 4.5L6 8L9.5 4.5" stroke={sp.iconSecondary} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 6.5L8 10.5L12 6.5" stroke={sp.iconSecondary} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </div>
   );
 }
 
-/** Colour swatch plus hex entry, sharing the input treatment. */
+/** Colour swatch plus hex entry, sharing the single-line input treatment. */
 export function ColorInput({
   value,
   onChange,
@@ -158,12 +211,12 @@ export function ColorInput({
       <div
         style={{
           position: "relative",
-          width: "40px",
-          height: "40px",
+          width: "32px",
+          height: "32px",
           flexShrink: 0,
           borderRadius: radius[2],
           overflow: "hidden",
-          border: `1px solid ${sp.borderSub}`,
+          border: `1px solid ${sp.borderInput}`,
         }}
       >
         <input
@@ -190,14 +243,7 @@ export function ColorInput({
           const v = e.target.value;
           if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) onChange(v.toLowerCase());
         }}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          height: "40px",
-          padding: `0 ${space[12]}`,
-          fontFamily: "'Courier New', monospace",
-          textTransform: "uppercase",
-        }}
+        style={{ flex: 1, minWidth: 0, fontFamily: "'Courier New', monospace", textTransform: "uppercase" }}
       />
     </div>
   );

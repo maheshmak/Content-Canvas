@@ -1,7 +1,14 @@
 import type { FieldDef, Anchor } from "../templates/schema";
 import { ANCHORS } from "../templates/schema";
 import { sp, space, radius, type, FONT } from "../theme";
-import { Field, TextArea, Select, ColorInput } from "./ds";
+import { Field, TextInput, TextArea, Select, ColorInput } from "./ds";
+
+/**
+ * Above this length a value is prose and gets Input-Text Area; below it, a
+ * single line and gets Input-Text Single. A 120px box for "Customer Name" would
+ * be wrong even though both are "text".
+ */
+const MULTILINE_ABOVE = 40;
 
 interface Props {
   field: FieldDef;
@@ -40,8 +47,8 @@ function AnchorPicker({
               justifyContent: "center",
               padding: 0,
               borderRadius: radius[2],
-              border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
-              background: isActive ? sp.blueSubtle : sp.white,
+              border: `1px solid ${isActive ? sp.borderActive : sp.borderInput}`,
+              background: isActive ? sp.inputActive : sp.inputBg,
               cursor: "pointer",
             }}
           >
@@ -137,13 +144,22 @@ export function FieldControl({ field, value, onChange }: Props) {
         hintTone={nearLimit ? "danger" : "muted"}
         htmlFor={id}
       >
-        <TextArea
-          id={id}
-          value={str}
-          maxLength={field.maxLength}
-          rows={str.length > 40 ? 3 : 2}
-          onChange={(e) => onChange(field.key, e.target.value)}
-        />
+        {field.maxLength > MULTILINE_ABOVE ? (
+          <TextArea
+            id={id}
+            value={str}
+            maxLength={field.maxLength}
+            onChange={(e) => onChange(field.key, e.target.value)}
+          />
+        ) : (
+          <TextInput
+            id={id}
+            type="text"
+            value={str}
+            maxLength={field.maxLength}
+            onChange={(e) => onChange(field.key, e.target.value)}
+          />
+        )}
       </Field>
     );
   }

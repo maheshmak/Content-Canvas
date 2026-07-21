@@ -17,7 +17,14 @@
   --sp-white: var(--color\/neutral\/black-0);
   --sp-bg: var(--color\/neutral\/black-100);
   --sp-surface-2: var(--color\/neutral\/black-400);
+  /* Input states, from Input-Text Single (Design System - Web, 13662:44321) */
   --sp-input-bg: var(--color\/surface\/input-primary);
+  --sp-input-hover: var(--color\/surface\/input-hover);
+  --sp-input-active: var(--color\/surface\/input-active);
+  --sp-input-disabled: var(--color\/surface\/input-primary-disabled);
+  --sp-border-input: var(--color\/border\/input-secondary);
+  --sp-border-input-disabled: var(--color\/border\/input-secondary-disabled);
+  --sp-border-danger: var(--color\/border\/danger);
 
   /* Borders */
   --sp-border-primary: var(--color\/border\/primary);
