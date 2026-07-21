@@ -178,13 +178,17 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
               mediaType={mediaType}
             />
 
-            <CustomizePanel
-              template={template}
-              fieldValues={fieldValues}
-              onFieldChange={handleFieldChange}
-              onReset={handleReset}
-              canReset={isDirty}
-            />
+            {/* Customize applies to templates only; the Text tab has no
+                options yet, so the panel is hidden there until it does. */}
+            {activeTab === "templates" && (
+              <CustomizePanel
+                template={template}
+                fieldValues={fieldValues}
+                onFieldChange={handleFieldChange}
+                onReset={handleReset}
+                canReset={isDirty}
+              />
+            )}
           </div>
         </div>
 
