@@ -35,7 +35,7 @@ function TextPanel() {
         borderRight: `1px solid ${sp.borderSub}`,
       }}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", width: "100%", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", width: "100%", height: "32px", flexShrink: 0 }}>
         <TabLabel>Text</TabLabel>
       </div>
       <p style={{ margin: 0, padding: "0 8px", fontFamily: FONT, fontSize: "14px", lineHeight: "18px", color: sp.textTertiary }}>
@@ -92,7 +92,8 @@ export function EditMediaModal({ media, mediaType, onClose, onSave }: Props) {
         aria-modal="true"
         aria-label={title}
         style={{
-          width: "1080px",
+          // 48 rail + 240 templates + 520 preview + 320 customize + 32 inset
+          width: "1160px",
           height: "800px",
           maxWidth: "100%",
           maxHeight: "100%",

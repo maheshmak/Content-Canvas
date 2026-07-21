@@ -41,7 +41,7 @@ export const templates: TemplateDef[] = [
     height: 1920,
     fields: [
       { key: "animationStyle", type: "select", label: "Animation style", default: "ease-out", options: EASING_OPTIONS },
-      { key: "bgColor", type: "color", label: "Background Color", default: "#FF6B35" },
+      { key: "bgColor", type: "color", label: "Accent Color", default: "#FF6B35" },
       { key: "headline", type: "text", label: "Headline", default: "Summer Sale", maxLength: 24 },
       { key: "discount", type: "number", label: "Discount %", default: 30, min: 5, max: 90 },
       { key: "tagline", type: "text", label: "Tagline", default: "Limited time only — shop now!", maxLength: 50 },

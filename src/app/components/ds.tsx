@@ -198,7 +198,12 @@ export function Select({
   );
 }
 
-/** Colour swatch plus hex entry, sharing the single-line input treatment. */
+/**
+ * Colour control, per the library's Input-Text Single "Filled" instance: one
+ * 32px input surface with the swatch inside on the left and the hex value
+ * (shown without the #) beside it. Clicking the swatch opens the native
+ * colour picker.
+ */
 export function ColorInput({
   value,
   onChange,
@@ -206,17 +211,32 @@ export function ColorInput({
   value: string;
   onChange: (hex: string) => void;
 }) {
+  const [focused, setFocused] = useState(false);
+  const [hover, setHover] = useState(false);
+  const v = surface({ focused });
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: space[8] }}>
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        ...shared,
+        display: "flex",
+        alignItems: "center",
+        gap: space[8],
+        height: "32px",
+        padding: `0 ${space[8]}`,
+        ...v,
+        ...(hover && !focused ? { background: sp.inputHover } : null),
+      }}
+    >
       <div
         style={{
           position: "relative",
-          width: "32px",
-          height: "32px",
+          width: "20px",
+          height: "20px",
           flexShrink: 0,
           borderRadius: radius[2],
           overflow: "hidden",
-          border: `1px solid ${sp.borderInput}`,
         }}
       >
         <input
@@ -235,15 +255,30 @@ export function ColorInput({
           }}
         />
       </div>
-      <TextInput
-        value={value.toUpperCase()}
-        maxLength={7}
+      <input
+        type="text"
         aria-label="Hex value"
+        value={value.replace(/^#/, "").toUpperCase()}
+        maxLength={6}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onChange={(e) => {
-          const v = e.target.value;
-          if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) onChange(v.toLowerCase());
+          const raw = e.target.value.replace(/^#/, "");
+          if (/^[0-9A-Fa-f]{0,6}$/.test(raw)) onChange("#" + raw.toLowerCase());
         }}
-        style={{ flex: 1, minWidth: 0, fontFamily: "'Courier New', monospace", textTransform: "uppercase" }}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          height: "100%",
+          border: "none",
+          background: "none",
+          outline: "none",
+          padding: 0,
+          color: sp.textPrimary,
+          fontFamily: FONT,
+          fontSize: type.s.size,
+          lineHeight: type.s.line,
+        }}
       />
     </div>
   );

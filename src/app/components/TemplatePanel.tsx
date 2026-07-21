@@ -42,7 +42,8 @@ function TemplateRow({
         padding: "16px",
         borderRadius: "4px",
         border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
-        background: sp.white,
+        // Selected rows take surface/primary; resting rows stay white.
+        background: isActive ? sp.bg : sp.white,
         cursor: "pointer",
         textAlign: "left",
         fontFamily: FONT,
@@ -98,6 +99,7 @@ export function TemplatePanel({
           alignItems: "flex-end",
           justifyContent: "space-between",
           width: "100%",
+          height: "32px",
           flexShrink: 0,
         }}
       >

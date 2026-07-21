@@ -25,7 +25,7 @@ export function CustomizePanel({
   return (
     <div
       style={{
-        width: "240px",
+        width: "320px",
         flexShrink: 0,
         height: "100%",
         display: "flex",
@@ -43,6 +43,7 @@ export function CustomizePanel({
           alignItems: "flex-end",
           justifyContent: "space-between",
           width: "100%",
+          height: "32px",
           flexShrink: 0,
         }}
       >
