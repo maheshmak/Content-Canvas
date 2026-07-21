@@ -1,4 +1,6 @@
-import { useCurrentFrame, interpolate } from "../../components/AnimationPlayer";
+import { useCurrentFrame, interpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { AnchoredStack, Scrim } from "../../components/layout";
+import type { Anchor } from "../schema";
 
 interface Props {
   inputProps: { [key: string]: string | number | undefined };
@@ -18,10 +20,12 @@ function Star({ filled, color, delay, frame }: { filled: boolean; color: string;
 
 export function StarRatingComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
   const rating = Math.min(5, Math.max(1, Number(inputProps.rating ?? 5)));
   const reviewText = String(inputProps.reviewText ?? "Best haircut in town!");
   const customerName = String(inputProps.customerName ?? "Happy Customer");
   const accentColor = String(inputProps.accentColor ?? "#F5A623");
+  const textAnchor = (inputProps.textAnchor as Anchor) ?? "bottom-left";
 
   const cardY = interpolate(frame, [5, 28], [60, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const cardOpacity = interpolate(frame, [5, 25], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -29,56 +33,47 @@ export function StarRatingComposition({ inputProps }: Props) {
   const nameOpacity = interpolate(frame, [50, 65], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
-    // Transparent root — photo shows through
     <div className="w-full h-full relative overflow-hidden" style={{ background: "transparent" }}>
-      {/* Bottom overlay card */}
-      <div
-        className="absolute bottom-0 left-0 right-0"
-        style={{
-          background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 60%, transparent 100%)",
-          padding: "64px 56px 56px",
-          opacity: cardOpacity,
-          transform: `translateY(${cardY}px)`,
-        }}
-      >
-        {/* Stars */}
-        <div style={{ display: "flex", gap: "14px", marginBottom: "28px" }}>
+      <Scrim anchor={textAnchor} opacity={cardOpacity} />
+
+      <AnchoredStack anchor={textAnchor} width={width} height={height} gap={28}>
+        {/* eyebrow — the rating itself */}
+        <div
+          style={{
+            display: "flex",
+            gap: "14px",
+            opacity: cardOpacity,
+            transform: `translateY(${cardY}px)`,
+          }}
+        >
           {[0, 1, 2, 3, 4].map((i) => (
             <Star key={i} filled={i < rating} color={accentColor} delay={i * 7} frame={frame} />
           ))}
         </div>
 
-        {/* Review text */}
-        <div style={{ opacity: reviewOpacity, marginBottom: "28px" }}>
-          <p style={{
+        {/* headline */}
+        <p
+          style={{
+            margin: 0,
             fontSize: "64px",
             fontWeight: 700,
             color: "#fff",
             lineHeight: 1.4,
             letterSpacing: "-0.2px",
             textShadow: "0 2px 8px rgba(0,0,0,0.5)",
-          }}>
-            "{reviewText}"
-          </p>
-        </div>
+            opacity: reviewOpacity,
+            transform: `translateY(${cardY}px)`,
+          }}
+        >
+          "{reviewText}"
+        </p>
 
-        {/* Divider + customer name */}
+        {/* attribution */}
         <div style={{ opacity: nameOpacity, display: "flex", alignItems: "center", gap: "20px" }}>
-          <div style={{ width: "56px", height: "4px", background: accentColor, borderRadius: "1px", flexShrink: 0 }} />
-          <p style={{ fontSize: "46px", fontWeight: 600, color: accentColor }}>
-            {customerName}
-          </p>
+          <div style={{ width: "56px", height: "4px", background: accentColor, borderRadius: "2px", flexShrink: 0 }} />
+          <p style={{ margin: 0, fontSize: "46px", fontWeight: 600, color: accentColor }}>{customerName}</p>
         </div>
-      </div>
-
-      {/* Top accent bar */}
-      <div
-        className="absolute top-0 left-0 right-0 h-1"
-        style={{
-          background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`,
-          opacity: cardOpacity,
-        }}
-      />
+      </AnchoredStack>
     </div>
   );
 }

@@ -24,7 +24,31 @@ export interface ColorField {
   default: string;
 }
 
-export type FieldDef = NumberField | TextField | ColorField;
+/**
+ * Where a block sits on the canvas. Placement is data, not code: templates
+ * declare which blocks are positionable and the shared layout in
+ * components/layout.tsx does the positioning, so every template obeys the same
+ * safe margins and scrim rules.
+ */
+export type Anchor =
+  | "top-left"    | "top-center"    | "top-right"
+  | "middle-left" | "middle-center" | "middle-right"
+  | "bottom-left" | "bottom-center" | "bottom-right";
+
+export const ANCHORS: Anchor[] = [
+  "top-left",    "top-center",    "top-right",
+  "middle-left", "middle-center", "middle-right",
+  "bottom-left", "bottom-center", "bottom-right",
+];
+
+export interface AnchorField {
+  key: string;
+  type: "anchor";
+  label: string;
+  default: Anchor;
+}
+
+export type FieldDef = NumberField | TextField | ColorField | AnchorField;
 
 export interface TemplateDef {
   id: string;

@@ -1,4 +1,5 @@
-import type { FieldDef } from "../templates/schema";
+import type { FieldDef, Anchor } from "../templates/schema";
+import { ANCHORS } from "../templates/schema";
 import { sp, FONT } from "../theme";
 
 interface Props {
@@ -7,7 +8,81 @@ interface Props {
   onChange: (key: string, value: string | number) => void;
 }
 
+/** 3x3 grid mirroring the nine anchors, so the control reads as the canvas. */
+function AnchorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: Anchor;
+  onChange: (a: Anchor) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontFamily: FONT }}>
+      <label style={{ fontSize: "13px", fontWeight: 600, color: sp.textPrimary, lineHeight: "18px" }}>
+        {label}
+      </label>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "4px",
+          width: "96px",
+        }}
+      >
+        {ANCHORS.map((a) => {
+          const isActive = a === value;
+          return (
+            <button
+              key={a}
+              type="button"
+              role="radio"
+              aria-checked={isActive}
+              aria-label={a.replace("-", " ")}
+              title={a.replace("-", " ")}
+              onClick={() => onChange(a)}
+              style={{
+                height: "28px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                borderRadius: "2px",
+                border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
+                background: isActive ? sp.blueSubtle : sp.white,
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "1px",
+                  background: isActive ? sp.blue : sp.track,
+                }}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function FieldControl({ field, value, onChange }: Props) {
+  if (field.type === "anchor") {
+    return (
+      <AnchorPicker
+        label={field.label}
+        value={(value as Anchor) ?? field.default}
+        onChange={(a) => onChange(field.key, a)}
+      />
+    );
+  }
+
   if (field.type === "number") {
     const num = Number(value);
     const pct = ((num - field.min) / (field.max - field.min)) * 100;

@@ -24,6 +24,7 @@ export const templates: TemplateDef[] = [
       { key: "reviewText", type: "text", label: "Review", default: "Best haircut in town!", maxLength: 80 },
       { key: "customerName", type: "text", label: "Customer Name", default: "Happy Customer", maxLength: 30 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#F5A623" },
+      { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
     ],
   },
   {
@@ -42,6 +43,8 @@ export const templates: TemplateDef[] = [
       { key: "discount", type: "number", label: "Discount %", default: 30, min: 5, max: 90 },
       { key: "tagline", type: "text", label: "Tagline", default: "Limited time only — shop now!", maxLength: 50 },
       { key: "bgColor", type: "color", label: "Background Color", default: "#FF6B35" },
+      { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "badgeAnchor", type: "anchor", label: "Badge position", default: "middle-center" },
     ],
   },
   {
@@ -60,6 +63,8 @@ export const templates: TemplateDef[] = [
       { key: "afterLabel", type: "text", label: "After Label", default: "After", maxLength: 20 },
       { key: "resultText", type: "text", label: "Result Text", default: "See the difference!", maxLength: 40 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#27AE60" },
+      { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "labelAnchor", type: "anchor", label: "Label position", default: "top-center" },
     ],
   },
   {
@@ -78,6 +83,7 @@ export const templates: TemplateDef[] = [
       { key: "date", type: "text", label: "Opening Date", default: "July 28, 2025", maxLength: 30 },
       { key: "message", type: "text", label: "Message", default: "Join us for our grand opening!", maxLength: 50 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#8B5CF6" },
+      { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
     ],
   },
   {
@@ -96,6 +102,7 @@ export const templates: TemplateDef[] = [
       { key: "price", type: "text", label: "Price", default: "$35", maxLength: 12 },
       { key: "description", type: "text", label: "Description", default: "Precision cut, wash & style included", maxLength: 60 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#0EA5E9" },
+      { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
     ],
   },
   {
@@ -114,6 +121,8 @@ export const templates: TemplateDef[] = [
       { key: "tipText", type: "text", label: "Tip Text", default: "Always use heat protectant before styling your hair", maxLength: 80 },
       { key: "ctaText", type: "text", label: "Call to Action", default: "Follow for more tips!", maxLength: 40 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#10B981" },
+      { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "badgeAnchor", type: "anchor", label: "Badge position", default: "top-left" },
     ],
   },
   {
@@ -132,6 +141,8 @@ export const templates: TemplateDef[] = [
       { key: "phone", type: "text", label: "Phone", default: "(555) 123-4567", maxLength: 20 },
       { key: "hours", type: "text", label: "Business Hours", default: "Mon–Sat  9am – 7pm", maxLength: 40 },
       { key: "accentColor", type: "color", label: "Accent Color", default: "#F59E0B" },
+      { key: "textAnchor", type: "anchor", label: "Text position", default: "bottom-left" },
+      { key: "pinAnchor", type: "anchor", label: "Pin position", default: "top-center" },
     ],
   },
 ];

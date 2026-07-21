@@ -1,4 +1,6 @@
-import { useCurrentFrame, interpolate } from "../../components/AnimationPlayer";
+import { useCurrentFrame, interpolate, useVideoConfig } from "../../components/AnimationPlayer";
+import { AnchoredStack, Scrim } from "../../components/layout";
+import type { Anchor } from "../schema";
 
 interface Props {
   inputProps: { [key: string]: string | number | undefined };
@@ -6,11 +8,14 @@ interface Props {
 
 export function GrandOpeningComposition({ inputProps }: Props) {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
   const businessName = String(inputProps.businessName ?? "The Corner Cafe");
   const date = String(inputProps.date ?? "July 28, 2025");
   const message = String(inputProps.message ?? "Join us for our grand opening!");
   const accentColor = String(inputProps.accentColor ?? "#8B5CF6");
+  const textAnchor = (inputProps.textAnchor as Anchor) ?? "bottom-left";
 
+  // Confetti is ambient, not a placeable feature — it stays full-bleed.
   const confetti = Array.from({ length: 20 }, (_, i) => ({
     x: 5 + i * 4.75,
     delay: i * 2,
@@ -26,8 +31,6 @@ export function GrandOpeningComposition({ inputProps }: Props) {
 
   return (
     <div className="w-full h-full relative overflow-hidden" style={{ background: "transparent" }}>
-
-      {/* Confetti particles */}
       {confetti.map((c, i) => {
         const y = interpolate(frame, [c.delay, c.delay + 55], [-5, 108], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
         const opacity = interpolate(frame, [c.delay, c.delay + 15], [0, 0.9], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -49,42 +52,46 @@ export function GrandOpeningComposition({ inputProps }: Props) {
         );
       })}
 
-      {/* "NOW OPEN" top pill */}
-      <div
-        className="absolute top-0 left-0 right-0 flex justify-center"
-        style={{ paddingTop: "44px", opacity: titleOpacity }}
-      >
-        <div style={{
-          padding: "12px 40px",
-          borderRadius: "60px",
-          background: accentColor,
-          boxShadow: `0 8px 32px ${accentColor}60`,
-        }}>
+      <Scrim anchor={textAnchor} opacity={overlayOpacity} />
+
+      <AnchoredStack anchor={textAnchor} width={width} height={height} gap={20}>
+        {/* eyebrow */}
+        <div
+          style={{
+            padding: "12px 40px",
+            borderRadius: "60px",
+            background: accentColor,
+            boxShadow: `0 8px 32px ${accentColor}60`,
+            opacity: titleOpacity,
+          }}
+        >
           <span style={{ fontSize: "40px", fontWeight: 700, color: "#fff", letterSpacing: "8px" }}>NOW OPEN</span>
         </div>
-      </div>
 
-      {/* Bottom content overlay */}
-      <div
-        className="absolute bottom-0 left-0 right-0"
-        style={{
-          background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 55%, transparent 100%)",
-          padding: "56px 56px 52px",
-          opacity: overlayOpacity,
-        }}
-      >
-        <div style={{ transform: `scale(${titleScale})`, transformOrigin: "left bottom", opacity: titleOpacity, marginBottom: "10px" }}>
-          <h1 style={{ fontSize: "100px", fontWeight: 900, color: "#fff", lineHeight: 1.1, textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
-            {businessName}
-          </h1>
-        </div>
+        {/* headline */}
+        <h1
+          style={{
+            margin: 0,
+            fontSize: "100px",
+            fontWeight: 900,
+            color: "#fff",
+            lineHeight: 1.1,
+            textShadow: "0 2px 10px rgba(0,0,0,0.5)",
+            opacity: titleOpacity,
+            transform: `scale(${titleScale})`,
+          }}
+        >
+          {businessName}
+        </h1>
 
-        <div style={{ opacity: msgOpacity, marginBottom: "16px" }}>
-          <p style={{ fontSize: "50px", color: "rgba(255,255,255,0.82)", lineHeight: 1.4 }}>{message}</p>
-        </div>
+        {/* support */}
+        <p style={{ margin: 0, fontSize: "50px", color: "rgba(255,255,255,0.82)", lineHeight: 1.4, opacity: msgOpacity }}>
+          {message}
+        </p>
 
-        <div style={{ opacity: dateOpacity }}>
-          <span style={{
+        {/* cta */}
+        <span
+          style={{
             display: "inline-block",
             padding: "14px 40px",
             borderRadius: "40px",
@@ -92,11 +99,12 @@ export function GrandOpeningComposition({ inputProps }: Props) {
             fontSize: "46px",
             fontWeight: 700,
             color: "#fff",
-          }}>
-            {date}
-          </span>
-        </div>
-      </div>
+            opacity: dateOpacity,
+          }}
+        >
+          {date}
+        </span>
+      </AnchoredStack>
     </div>
   );
 }
