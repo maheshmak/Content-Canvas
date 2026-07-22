@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
-import type { TemplateDef, TemplateState, PostCopy } from "../templates/schema";
+import type { Align, TemplateDef, TemplateState, PostCopy } from "../templates/schema";
 import { getDefaults, tidyPositions, canHide } from "../templates/schema";
+import { shuffle } from "./shuffle";
+import { suggestPosition } from "./smartPlacement";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
 import { CloseIcon } from "./icons";
@@ -9,7 +11,7 @@ import { IconRail } from "./IconRail";
 import type { EditorTab } from "./IconRail";
 import { TemplatePanel } from "./TemplatePanel";
 import { CustomizePanel } from "./CustomizePanel";
-import { MediaPlayback } from "./MediaPreview";
+import { MediaStage } from "./MediaPreview";
 import type { MediaItem, MediaType } from "./MediaPreview";
 
 interface Props {
@@ -52,12 +54,19 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
   const [template, setTemplate] = useState<TemplateDef | null>(null);
   const [state, setState] = useState<TemplateState>({ values: {}, layers: {}, extras: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    // Escape is progressive: it clears a selection before it closes the modal,
+    // so it never throws away work when the user meant "deselect".
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (selectedId) setSelectedId(null);
+      else onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, selectedId]);
 
   const handleSelect = useCallback((t: TemplateDef) => {
     setTemplate(t);
@@ -79,6 +88,26 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
       return { ...prev, layers: { ...prev.layers, [id]: { ...layer, visible: !layer.visible } } };
     });
   }, []);
+
+  const handleMove = useCallback((id: string, x: number, y: number, align: Align) => {
+    setState((prev) => {
+      const layer = prev.layers[id];
+      if (!layer) return prev;
+      return { ...prev, layers: { ...prev.layers, [id]: { ...layer, x, y, align } } };
+    });
+  }, []);
+
+  const handleShuffle = useCallback(() => {
+    if (template) setState((prev) => shuffle(prev));
+  }, [template]);
+
+  /** Move the selected element to the quietest part of the photo. */
+  const handleAutoPlace = useCallback(async () => {
+    if (!selectedId) return;
+    const pos = await suggestPosition(media.src);
+    if (!pos) return;
+    handleMove(selectedId, pos.x, pos.y, pos.align);
+  }, [selectedId, media.src, handleMove]);
 
   const handleReset = useCallback(() => {
     if (template) {
@@ -179,7 +208,18 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
               <TextPanel />
             )}
 
-            <MediaPlayback media={media} template={template} state={state} mediaType={mediaType} />
+            <MediaStage
+              media={media}
+              template={template}
+              state={state}
+              mediaType={mediaType}
+              playing={playing}
+              onTogglePlay={() => setPlaying((p) => !p)}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onMove={handleMove}
+              onEditText={handleFieldChange}
+            />
 
             {activeTab === "templates" && (
               <CustomizePanel
@@ -191,6 +231,8 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
                 onToggleLayer={handleToggleLayer}
                 onReset={handleReset}
                 onTidy={handleTidy}
+                onShuffle={handleShuffle}
+                onAutoPlace={handleAutoPlace}
                 canReset={isDirty}
               />
             )}

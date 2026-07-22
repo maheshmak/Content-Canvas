@@ -23,6 +23,8 @@ export function CustomizePanel({
   onToggleLayer,
   onReset,
   onTidy,
+  onShuffle,
+  onAutoPlace,
   canReset,
 }: {
   template: TemplateDef | null;
@@ -33,6 +35,8 @@ export function CustomizePanel({
   onToggleLayer: (id: string) => void;
   onReset: () => void;
   onTidy: () => void;
+  onShuffle: () => void;
+  onAutoPlace: () => void;
   canReset: boolean;
 }) {
   const selected = template?.layers.find((l) => l.id === selectedId) ?? null;
@@ -64,9 +68,16 @@ export function CustomizePanel({
         }}
       >
         <TabLabel>Customize</TabLabel>
-        <IconButton title="Reset to defaults" onClick={onReset} disabled={!canReset}>
-          <ResetIcon />
-        </IconButton>
+        <div style={{ display: "flex", alignItems: "center", gap: space[4] }}>
+          {/* One tap for a different look — the option that removes a decision
+              rather than adding one. */}
+          <IconButton title="Shuffle the look" onClick={onShuffle} disabled={!template}>
+            <span style={{ fontSize: "16px" }}>✨</span>
+          </IconButton>
+          <IconButton title="Reset to defaults" onClick={onReset} disabled={!canReset}>
+            <ResetIcon />
+          </IconButton>
+        </div>
       </div>
 
       <div
@@ -90,18 +101,18 @@ export function CustomizePanel({
             {/* Selected element's own options */}
             {selected && (
               <Section label={`Selected · ${selected.label}`}>
-                {selected.fields.length ? (
-                  selected.fields.map((field) => (
-                    <FieldControl
-                      key={field.key}
-                      field={field}
-                      value={state.values[field.key] ?? field.default}
-                      onChange={onFieldChange}
-                    />
-                  ))
-                ) : (
-                  <Muted>Nothing to edit — drag it on the canvas to reposition.</Muted>
-                )}
+                {selected.fields.map((field) => (
+                  <FieldControl
+                    key={field.key}
+                    field={field}
+                    value={state.values[field.key] ?? field.default}
+                    onChange={onFieldChange}
+                  />
+                ))}
+                <SecondaryButton onClick={onAutoPlace}>
+                  ✨ Auto-place on the quiet part
+                </SecondaryButton>
+                <Muted>Drag it on the canvas, or double-click text to edit it there.</Muted>
               </Section>
             )}
 
@@ -174,22 +185,7 @@ export function CustomizePanel({
                   onChange={onFieldChange}
                 />
               ))}
-              <button
-                type="button"
-                onClick={onTidy}
-                style={{
-                  height: "32px",
-                  borderRadius: "2px",
-                  border: `1px solid ${sp.borderInput}`,
-                  background: sp.inputBg,
-                  color: sp.textPrimary,
-                  fontFamily: FONT,
-                  fontSize: type.s.size,
-                  cursor: "pointer",
-                }}
-              >
-                Tidy up
-              </button>
+              <SecondaryButton onClick={onTidy}>Tidy up</SecondaryButton>
             </Section>
           </>
         )}
@@ -216,6 +212,27 @@ function Section({ label, children }: { label: string; children: React.ReactNode
       </p>
       {children}
     </div>
+  );
+}
+
+function SecondaryButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        height: "32px",
+        borderRadius: "2px",
+        border: `1px solid ${sp.borderInput}`,
+        background: sp.inputBg,
+        color: sp.textPrimary,
+        fontFamily: FONT,
+        fontSize: type.s.size,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

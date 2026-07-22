@@ -47,20 +47,24 @@ export function motionStyle(motion: Motion, frame: number, interpolate: Interpol
 
 /** Wraps one element at its position, with its entrance applied. */
 function Positioned({
+  id,
   position,
   motion,
   frame,
   interpolate,
   width,
   height,
+  interactive,
   children,
 }: {
+  id: string;
   position: Position;
   motion: Motion;
   frame: number;
   interpolate: Interpolate;
   width: number;
   height: number;
+  interactive?: boolean;
   children: React.ReactNode;
 }) {
   const inner = motionStyle(motion, frame, interpolate);
@@ -68,6 +72,10 @@ function Positioned({
   // alignment transform that positions the layer.
   return (
     <div
+      // The edit canvas finds layers by this attribute rather than measuring
+      // its way through the tree, so hit-testing survives any change to how a
+      // layer draws itself.
+      data-layer-id={id}
       style={{
         position: "absolute",
         left: `${position.x * width}px`,
@@ -75,6 +83,8 @@ function Positioned({
         transform: TRANSLATE[position.align],
         textAlign: position.align,
         maxWidth: `${(1 - 2 * 0.075) * width}px`,
+        pointerEvents: interactive ? "auto" : "none",
+        cursor: interactive ? "grab" : undefined,
       }}
     >
       <div style={inner}>{children}</div>
@@ -88,12 +98,15 @@ export function LayerCanvas({
   frame,
   width,
   height,
+  interactive,
 }: {
   template: TemplateDef;
   state: TemplateState;
   frame: number;
   width: number;
   height: number;
+  /** Edit mode: layers accept pointer events so they can be selected/dragged. */
+  interactive?: boolean;
 }) {
   const interpolate = createInterpolate(state.values.animationStyle as string | undefined);
   const accent = String(state.values.accentColor ?? template.previewColor);
@@ -110,6 +123,8 @@ export function LayerCanvas({
         return (
           <Positioned
             key={layer.id}
+            id={layer.id}
+            interactive={interactive}
             position={pos}
             motion={layer.motion}
             frame={frame}
@@ -125,6 +140,8 @@ export function LayerCanvas({
       {state.extras.map((extra) => (
         <Positioned
           key={extra.id}
+          id={extra.id}
+          interactive={interactive}
           position={extra.position}
           motion={extra.motion}
           frame={frame}

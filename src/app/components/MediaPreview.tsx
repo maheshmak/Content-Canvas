@@ -1,10 +1,11 @@
 import { useRef, useState, useLayoutEffect, useEffect } from "react";
 import type { ReactNode } from "react";
-import { Player, Thumbnail } from "@remotion/player";
+import { Player } from "@remotion/player";
 import type { PlayerRef } from "@remotion/player";
-import type { TemplateDef, TemplateState } from "../templates/schema";
+import type { Align, TemplateDef, TemplateState } from "../templates/schema";
 import { sp } from "../theme";
 import { TemplateComposition } from "./TemplateComposition";
+import { EditableCanvas } from "./EditableCanvas";
 
 export interface MediaItem {
   id: string;
@@ -29,7 +30,7 @@ export const MEDIA_H = 640;
  * squash its height — a squashed box changes the aspect ratio and crops content
  * that sits well inside its own safe margins.
  */
-export function FittedFrame({
+function FittedFrame({
   media,
   render,
 }: {
@@ -110,7 +111,7 @@ type PlayerProps = React.ComponentProps<typeof Player>;
  * Playback starts through the player ref rather than `autoPlay`: the modal opens
  * without a user gesture, and autoPlay alone leaves the player reporting
  * isPlaying:true with its clock pinned to frame 0. Seeking first reliably starts
- * it, with a re-check for the case where the modal mounts backgrounded.
+ * it, with a re-check for the case where it mounts backgrounded.
  */
 function LoopingPlayer(props: PlayerProps & { restartKey: string }) {
   const ref = useRef<PlayerRef>(null);
@@ -134,25 +135,47 @@ function LoopingPlayer(props: PlayerProps & { restartKey: string }) {
 }
 
 /**
- * Play mode only. Edit mode renders through EditableCanvas instead, because a
- * playing composition is rendered video frames and nothing in it is clickable.
+ * The centre column: an editable canvas by default, playback on demand.
+ *
+ * The two cannot be one surface — a playing composition is rendered video
+ * frames, so nothing in it can be clicked or dragged. Editing therefore happens
+ * on a static canvas and motion is previewed, which is how Canva and every
+ * motion tool resolve the same constraint.
  */
-export function MediaPlayback({
+export function MediaStage({
   media,
   template,
   state,
   mediaType,
+  playing,
+  onTogglePlay,
+  selectedId,
+  onSelect,
+  onMove,
+  onEditText,
 }: {
   media: MediaItem;
   template: TemplateDef | null;
   state: TemplateState;
   mediaType: MediaType;
+  playing: boolean;
+  onTogglePlay: () => void;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  onMove: (id: string, x: number, y: number, align: Align) => void;
+  onEditText: (key: string, value: string) => void;
 }) {
+  const canPlay = Boolean(template) && mediaType === "video";
+
   return (
     <div
       style={{
         flex: 1,
-        minWidth: 0,
+        // Never let the canvas collapse. The side panels are fixed width, so a
+        // flexible centre column shrinks to nothing on a narrow viewport and the
+        // media disappears — the card scrolls instead, which is the same
+        // never-clip rule the frame itself follows.
+        minWidth: `${MEDIA_W}px`,
         height: "100%",
         display: "flex",
         flexDirection: "column",
@@ -161,37 +184,75 @@ export function MediaPlayback({
         gap: "16px",
         padding: "16px",
         background: sp.white,
+        position: "relative",
       }}
     >
       <FittedFrame
         media={media}
         render={({ w, h }) => {
           if (!template) return null;
-          const shared = {
-            component: TemplateComposition,
-            inputProps: { templateId: template.id, state },
-            durationInFrames: template.durationInFrames,
-            fps: template.fps,
-            compositionWidth: template.width,
-            compositionHeight: template.height,
-            // Transparent so the photo underneath shows through.
-            style: { width: w, height: h, background: "transparent" },
-          };
+
+          if (!playing) {
+            return (
+              <EditableCanvas
+                template={template}
+                state={state}
+                boxW={w}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                onMove={onMove}
+                onEditText={onEditText}
+              />
+            );
+          }
+
           return (
             <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-              {mediaType === "video" ? (
-                <LoopingPlayer {...shared} key={template.id} restartKey={template.id} />
-              ) : (
-                <Thumbnail
-                  {...shared}
-                  key={template.id}
-                  frameToDisplay={template.durationInFrames - 1}
-                />
-              )}
+              <LoopingPlayer
+                key={template.id}
+                restartKey={template.id}
+                component={TemplateComposition}
+                inputProps={{ templateId: template.id, state }}
+                durationInFrames={template.durationInFrames}
+                fps={template.fps}
+                compositionWidth={template.width}
+                compositionHeight={template.height}
+                // Transparent so the photo underneath shows through.
+                style={{ width: w, height: h, background: "transparent" }}
+              />
             </div>
           );
         }}
       />
+
+      {canPlay && (
+        <button
+          type="button"
+          onClick={onTogglePlay}
+          title={playing ? "Back to editing" : "Preview the animation"}
+          style={{
+            position: "absolute",
+            top: "26px",
+            right: "26px",
+            zIndex: 3,
+            height: "32px",
+            padding: "0 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            borderRadius: "80px",
+            border: "none",
+            background: "rgba(0,0,0,0.62)",
+            backdropFilter: "blur(8px)",
+            color: "#fff",
+            fontSize: "13px",
+            fontFamily: "inherit",
+            cursor: "pointer",
+          }}
+        >
+          {playing ? "■ Stop" : "▶ Play"}
+        </button>
+      )}
     </div>
   );
 }
