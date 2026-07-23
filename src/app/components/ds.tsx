@@ -150,6 +150,49 @@ export function TextArea({
   );
 }
 
+/** Pill choice row — options visible at a glance, no dropdown. */
+export function PillSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: space[8] }}>
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onChange(option.value)}
+            style={{
+              height: "32px",
+              padding: `0 ${space[12]}`,
+              borderRadius: radius[16],
+              border: `1px solid ${selected ? sp.borderActive : sp.borderSub}`,
+              background: selected ? sp.blueSubtle : sp.white,
+              color: selected ? sp.blue : sp.textPrimary,
+              fontFamily: FONT,
+              fontSize: type.s.size,
+              lineHeight: type.s.line,
+              fontWeight: 400,
+              cursor: "pointer",
+              transition: "background-color 0.12s, border-color 0.12s, color 0.12s",
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Input-Dropdown — 32px tall, 8px left / 4px right for the chevron. */
 export function Select({
   options,

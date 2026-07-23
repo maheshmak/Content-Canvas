@@ -1,64 +1,96 @@
-import type { TemplateDef } from "../templates/schema";
+import { useMemo } from "react";
+import type { PostCopy, TemplateDef } from "../templates/schema";
+import { getDefaults } from "../templates/schema";
 import { templates } from "../templates/index";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
+import { LayerCanvas } from "./LayerCanvas";
+import { Scrim, scrimRegion } from "./layout";
+import type { MediaItem } from "./MediaPreview";
 
-// Per-template emoji, matching the design frame.
-const TEMPLATE_EMOJI: Record<string, string> = {
-  "five-star-rating": "🌟",
-  "summer-sale": "☀️",
-  "transformation": "🔄",
-  "grand-opening": "🥳",
-  "service-highlight": "✂️",
-  "pro-tip": "💡",
-  "find-us": "📍",
-};
+/** Thumbnail canvas size — 2 columns in the 240px panel, at the 9:16 ratio. */
+const THUMB_W = 100;
+const THUMB_H = (THUMB_W * 1920) / 1080;
 
 /**
- * Row per node 5909:69103 — 16px padding, 8px gap, radius 4, white fill.
- * Selection is carried entirely by the border colour: border/input-active
- * (#89B9FF) when selected, border/secondary (#F2F2F2) otherwise. The label does
- * not change weight or colour.
+ * A live preview of the template applied to this post's actual photo, rather
+ * than an emoji and a name. Picking a visual treatment from a glance is a
+ * different, faster decision than reading two words like "Pro Tip" — this is
+ * the pattern GoDaddy Studio and Canva converge on for the same choice.
  */
-function TemplateRow({
+function TemplateThumb({
   template,
+  media,
+  post,
   isActive,
   onSelect,
 }: {
   template: TemplateDef;
+  media: MediaItem;
+  post: PostCopy | undefined;
   isActive: boolean;
   onSelect: () => void;
 }) {
+  // Rendered at the template's finished frame — the same still every template
+  // row in the picker settles into once its entrance motion has played.
+  const frame = template.durationInFrames - 1;
+  const state = useMemo(() => getDefaults(template, post), [template, post]);
+
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={isActive}
+      title={template.name}
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        width: "100%",
-        padding: "16px",
-        borderRadius: "4px",
-        border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
-        // Selected rows take surface/primary; resting rows stay white.
-        background: isActive ? sp.bg : sp.white,
+        flexDirection: "column",
+        gap: "6px",
+        padding: 0,
+        border: "none",
+        background: "none",
         cursor: "pointer",
         textAlign: "left",
         fontFamily: FONT,
-        flexShrink: 0,
       }}
     >
-      <span style={{ fontSize: "16px", lineHeight: "20px", flexShrink: 0 }}>
-        {TEMPLATE_EMOJI[template.id] ?? "📄"}
-      </span>
+      <div
+        style={{
+          position: "relative",
+          width: `${THUMB_W}px`,
+          height: `${THUMB_H}px`,
+          borderRadius: "4px",
+          overflow: "hidden",
+          border: `${isActive ? 2 : 1}px solid ${isActive ? sp.borderActive : sp.borderSub}`,
+          background: "#000",
+        }}
+      >
+        <img
+          src={media.src}
+          alt=""
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: `${template.width}px`,
+            height: `${template.height}px`,
+            transform: `scale(${THUMB_W / template.width})`,
+            transformOrigin: "top left",
+          }}
+        >
+          {template.scrim ? <Scrim region={scrimRegion(state)} /> : null}
+          <LayerCanvas template={template} state={state} frame={frame} width={template.width} height={template.height} />
+        </div>
+      </div>
       <span
         style={{
-          fontSize: "14px",
-          lineHeight: "18px",
+          fontSize: "12px",
+          lineHeight: "16px",
           fontWeight: 400,
-          color: sp.textPrimary,
+          color: isActive ? sp.textPrimary : sp.textSecondary,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -71,9 +103,13 @@ function TemplateRow({
 }
 
 export function TemplatePanel({
+  media,
+  post,
   activeTemplateId,
   onSelect,
 }: {
+  media: MediaItem;
+  post: PostCopy | undefined;
   activeTemplateId: string | null;
   onSelect: (template: TemplateDef) => void;
 }) {
@@ -107,19 +143,23 @@ export function TemplatePanel({
       </div>
 
       <div
+        className="scroll-area"
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "12px 8px",
+          alignContent: "start",
         }}
       >
         {templates.map((t) => (
-          <TemplateRow
+          <TemplateThumb
             key={t.id}
             template={t}
+            media={media}
+            post={post}
             isActive={t.id === activeTemplateId}
             onSelect={() => onSelect(t)}
           />

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { FieldDef, TemplateDef } from "./schema";
-import { EASING_OPTIONS } from "../components/AnimationPlayer";
+import { DEFAULT_ANIMATION_STYLE, EASING_OPTIONS } from "../components/AnimationPlayer";
 import { RatingRow, DiscountBadge, MapPin, TipBadge, Confetti } from "./art";
 
 /**
@@ -70,8 +70,9 @@ const motionStyleField: FieldDef = {
   key: "animationStyle",
   type: "select",
   label: "Animation style",
-  default: "ease-out",
+  default: DEFAULT_ANIMATION_STYLE,
   options: EASING_OPTIONS,
+  variant: "pills",
 };
 
 const accentField = (defaultColor: string): FieldDef => ({

@@ -2,13 +2,15 @@ import type { CSSProperties } from "react";
 import type {
   Align,
   ExtraLayer,
+  FieldValues,
   LayerDef,
   Motion,
   Position,
   TemplateDef,
   TemplateState,
 } from "../templates/schema";
-import { createInterpolate } from "./AnimationPlayer";
+import { SAFE_X } from "../templates/schema";
+import { createInterpolate, normalizeAnimationStyle } from "./AnimationPlayer";
 import type { Interpolate } from "./AnimationPlayer";
 import { TEXT_STYLES } from "./textStyles";
 import { BADGES } from "./badges";
@@ -30,18 +32,39 @@ const TRANSLATE: Record<Align, string> = {
   right: "translateX(-100%)",
 };
 
-export function motionStyle(motion: Motion, frame: number, interpolate: Interpolate): CSSProperties {
+export function motionStyle(motion: Motion, frame: number, interpolate: Interpolate, values: FieldValues): CSSProperties {
   if (motion.type === "none") return {};
   const { delay } = motion;
-  const opacity = interpolate(frame, [delay, delay + 18], [0, 1]);
+  const style = normalizeAnimationStyle(values.animationStyle as string | undefined);
 
-  switch (motion.type) {
-    case "slide-up":
-      return { opacity, transform: `translateY(${interpolate(frame, [delay, delay + 22], [40, 0])}px)` };
+  switch (style) {
+    case "none":
+      return { opacity: 1 };
+    case "fade":
+      return { opacity: interpolate(frame, [delay, delay + 30], [0, 1]) };
     case "pop":
-      return { opacity, transform: `scale(${interpolate(frame, [delay, delay + 20], [0.4, 1])})` };
+      return {
+        opacity: interpolate(frame, [delay, delay + 12], [0, 1]),
+        transform: `scale(${interpolate(frame, [delay, delay + 24], [0.2, 1])})`,
+      };
+    case "bounce":
+      // Overshoot lives in the easing, so a plain rise reads as a bounce that
+      // settles rather than a slide that stops dead.
+      return {
+        opacity: interpolate(frame, [delay, delay + 10], [0, 1]),
+        transform: `translateY(${interpolate(frame, [delay, delay + 34], [120, 0])}px)`,
+      };
+    case "zoom":
+      return {
+        opacity: interpolate(frame, [delay, delay + 14], [0, 1]),
+        transform: `scale(${interpolate(frame, [delay, delay + 26], [1.4, 1])})`,
+      };
+    case "slide-up":
     default:
-      return { opacity };
+      return {
+        opacity: interpolate(frame, [delay, delay + 16], [0, 1]),
+        transform: `translateY(${interpolate(frame, [delay, delay + 28], [96, 0])}px)`,
+      };
   }
 }
 
@@ -55,6 +78,8 @@ function Positioned({
   width,
   height,
   interactive,
+  values,
+  maxWidthFrac,
   children,
 }: {
   id: string;
@@ -65,9 +90,13 @@ function Positioned({
   width: number;
   height: number;
   interactive?: boolean;
+  values: FieldValues;
+  /** Wrap width as a fraction of the canvas; falls back to the safe area. */
+  maxWidthFrac?: number;
   children: React.ReactNode;
 }) {
-  const inner = motionStyle(motion, frame, interpolate);
+  const inner = motionStyle(motion, frame, interpolate, values);
+  const maxWidth = (maxWidthFrac ?? 1 - 2 * SAFE_X) * width;
   // The entrance transform lives on an inner element so it never fights the
   // alignment transform that positions the layer.
   return (
@@ -82,7 +111,7 @@ function Positioned({
         top: `${position.y * height}px`,
         transform: TRANSLATE[position.align],
         textAlign: position.align,
-        maxWidth: `${(1 - 2 * 0.075) * width}px`,
+        maxWidth: `${maxWidth}px`,
         pointerEvents: interactive ? "auto" : "none",
         cursor: interactive ? "grab" : undefined,
       }}
@@ -120,6 +149,9 @@ export function LayerCanvas({
 
       {visible.map((layer) => {
         const pos = state.layers[layer.id] ?? layer.position;
+        // Text layers carry an adjustable wrap width; artwork keeps the safe
+        // default so badges and pins are never squeezed.
+        const maxWidthFrac = layer.kind === "text" ? state.layers[layer.id]?.textWidth : undefined;
         return (
           <Positioned
             key={layer.id}
@@ -131,6 +163,8 @@ export function LayerCanvas({
             interpolate={interpolate}
             width={width}
             height={height}
+            values={state.values}
+            maxWidthFrac={maxWidthFrac}
           >
             <LayerBody layer={layer} accent={accent} renderProps={renderProps} />
           </Positioned>
@@ -148,6 +182,7 @@ export function LayerCanvas({
           interpolate={interpolate}
           width={width}
           height={height}
+          values={state.values}
         >
           <ExtraBody extra={extra} accent={accent} />
         </Positioned>

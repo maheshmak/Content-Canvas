@@ -34,6 +34,8 @@ export interface SelectField {
   label: string;
   default: string;
   options: { value: string; label: string }[];
+  /** Show options as pills instead of a dropdown. */
+  variant?: "dropdown" | "pills";
 }
 
 export type FieldDef = NumberField | TextField | ColorField | SelectField;
@@ -172,6 +174,8 @@ export interface LayerState {
   x: number;
   y: number;
   align: Align;
+  /** Normalised wrap width for text layers, as a fraction of canvas width. */
+  textWidth?: number;
 }
 
 export type ExtraLayer =
@@ -218,7 +222,11 @@ export function getDefaults(template: TemplateDef, post?: PostCopy): TemplateSta
     const fromPost = resolveSource(layer, post);
     if (fromPost && layer.textKey) values[layer.textKey] = fromPost;
 
-    layers[layer.id] = { visible: true, ...layer.position };
+    layers[layer.id] = {
+      visible: true,
+      ...layer.position,
+      ...(layer.kind === "text" ? { textWidth: 1 - 2 * SAFE_X } : {}),
+    };
   }
 
   return { values, layers, extras: [] };
@@ -228,7 +236,11 @@ export function getDefaults(template: TemplateDef, post?: PostCopy): TemplateSta
 export function tidyPositions(template: TemplateDef, state: TemplateState): TemplateState {
   const layers: Record<string, LayerState> = {};
   for (const layer of template.layers) {
-    layers[layer.id] = { visible: state.layers[layer.id]?.visible ?? true, ...layer.position };
+    layers[layer.id] = {
+      visible: state.layers[layer.id]?.visible ?? true,
+      ...layer.position,
+      textWidth: state.layers[layer.id]?.textWidth,
+    };
   }
   return { ...state, layers };
 }

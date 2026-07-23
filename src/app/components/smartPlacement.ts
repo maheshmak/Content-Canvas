@@ -69,11 +69,32 @@ export async function analysePhoto(src: string): Promise<PlacementScore[]> {
   return scores.sort((a, b) => a.business - b.business);
 }
 
-/** The calmest place to put something on this photo. */
-export async function suggestPosition(src: string): Promise<Position | null> {
+/**
+ * The calmest place to put something on this photo.
+ *
+ * On a typical portrait the quiet regions — a plain wall, an empty desk — are
+ * near-tied, so a single deterministic winner lands in the same corner every
+ * time and reads as "it always goes there". Passing the element's current
+ * anchor makes repeated taps step to the next-quietest region instead, so
+ * auto-place explores the calm spots the way Shuffle explores the palette.
+ */
+export async function suggestPosition(src: string, currentAnchor?: Anchor): Promise<Position | null> {
   const scores = await analysePhoto(src);
   if (!scores.length) return null;
-  return anchorToPosition(scores[0].anchor);
+
+  // The clearly-quiet regions: those within twice the quietest cell's score,
+  // and always at least three so repeated taps have somewhere fresh to land.
+  // On a portrait this is the ring of corners around the centred subject.
+  const best = scores[0].business;
+  let quiet = scores.filter((s) => s.business <= best * 2);
+  if (quiet.length < 3) quiet = scores.slice(0, 3);
+
+  // Step to the next quiet region after wherever the element sits now, wrapping
+  // around, so taps walk through every calm spot rather than flipping between
+  // the same two.
+  const idx = quiet.findIndex((s) => s.anchor === currentAnchor);
+  const next = idx === -1 ? quiet[0] : quiet[(idx + 1) % quiet.length];
+  return anchorToPosition(next.anchor);
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {

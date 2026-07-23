@@ -1,6 +1,6 @@
 import type { TemplateState } from "../templates/schema";
 import { SAFE_Y } from "../templates/schema";
-import { EASING_OPTIONS } from "./AnimationPlayer";
+import { EASING_OPTIONS, normalizeAnimationStyle } from "./AnimationPlayer";
 
 /**
  * Re-rolls the look into another good-looking combination.
@@ -49,7 +49,7 @@ export function shuffle(state: TemplateState): TemplateState {
   values.accentColor = pickDifferent(PALETTE, String(state.values.accentColor));
   values.animationStyle = pickDifferent(
     EASING_OPTIONS.map((o) => o.value),
-    String(state.values.animationStyle),
+    normalizeAnimationStyle(String(state.values.animationStyle)),
   );
 
   // Move the group, keeping its internal arrangement intact.

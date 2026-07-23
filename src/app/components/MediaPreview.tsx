@@ -6,6 +6,7 @@ import type { Align, TemplateDef, TemplateState } from "../templates/schema";
 import { sp } from "../theme";
 import { TemplateComposition } from "./TemplateComposition";
 import { EditableCanvas } from "./EditableCanvas";
+import { PencilIcon } from "./icons";
 
 export interface MediaItem {
   id: string;
@@ -74,6 +75,7 @@ function FittedFrame({
     >
       {w > 0 && h > 0 && (
         <div
+          data-frame
           style={{
             position: "relative",
             width: `${w}px`,
@@ -135,40 +137,102 @@ function LoopingPlayer(props: PlayerProps & { restartKey: string }) {
 }
 
 /**
- * The centre column: an editable canvas by default, playback on demand.
+ * The centre column.
  *
- * The two cannot be one surface — a playing composition is rendered video
- * frames, so nothing in it can be clicked or dragged. Editing therefore happens
- * on a static canvas and motion is previewed, which is how Canva and every
- * motion tool resolve the same constraint.
+ * The post's motion plays as soon as a template is chosen — the modal opens on
+ * the finished thing, so the default is to watch it, not to be dropped into an
+ * editor. Hovering the frame reveals a single "Edit" affordance; taking it
+ * freezes the composition into the interactive canvas (a playing composition is
+ * rendered video frames, so nothing in it is clickable — edit and play cannot
+ * be the same surface). Clicking off the frame hands it back to playback. There
+ * is no mode switch to hunt for; the surface itself offers the one next step.
  */
+
+/** The hover-revealed way into edit mode, laid over the playing composition. */
+function EditOverlay({ onEdit }: { onEdit: () => void }) {
+  const [hovering, setHovering] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 3,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onEdit}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          height: "40px",
+          padding: "0 20px",
+          borderRadius: "999px",
+          border: "none",
+          background: "rgba(0,0,0,0.72)",
+          backdropFilter: "blur(8px)",
+          color: "#fff",
+          fontSize: "14px",
+          fontFamily: "inherit",
+          cursor: "pointer",
+          opacity: hovering ? 1 : 0,
+          transform: hovering ? "scale(1)" : "scale(0.96)",
+          transition: "opacity 140ms, transform 140ms",
+        }}
+      >
+        <PencilIcon /> Edit
+      </button>
+    </div>
+  );
+}
+
 export function MediaStage({
   media,
   template,
   state,
   mediaType,
   playing,
-  onTogglePlay,
+  onPlayingChange,
   selectedId,
   onSelect,
   onMove,
   onEditText,
+  onToggleLayer,
+  onResizeText,
 }: {
   media: MediaItem;
   template: TemplateDef | null;
   state: TemplateState;
   mediaType: MediaType;
   playing: boolean;
-  onTogglePlay: () => void;
+  onPlayingChange: (playing: boolean) => void;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number, align: Align) => void;
-  onEditText: (key: string, value: string) => void;
+  onEditText: (key: string, value: string | number) => void;
+  onToggleLayer: (id: string) => void;
+  onResizeText: (id: string, textWidth: number) => void;
 }) {
   const canPlay = Boolean(template) && mediaType === "video";
 
+  // In edit mode, a click that lands off the frame — on the surrounding stage —
+  // returns to playback. Clicks inside the frame belong to the canvas (select,
+  // drag, deselect) and must not trigger it.
+  const handleStagePointerDown = (e: React.PointerEvent) => {
+    if (!playing && canPlay && !(e.target as HTMLElement).closest("[data-frame]")) {
+      onPlayingChange(true);
+    }
+  };
+
   return (
     <div
+      onPointerDown={handleStagePointerDown}
       style={{
         flex: 1,
         // Never let the canvas collapse. The side panels are fixed width, so a
@@ -198,61 +262,38 @@ export function MediaStage({
                 template={template}
                 state={state}
                 boxW={w}
+                boxH={h}
                 selectedId={selectedId}
                 onSelect={onSelect}
                 onMove={onMove}
                 onEditText={onEditText}
+                onToggleLayer={onToggleLayer}
+                onResizeText={onResizeText}
               />
             );
           }
 
           return (
-            <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-              <LoopingPlayer
-                key={template.id}
-                restartKey={template.id}
-                component={TemplateComposition}
-                inputProps={{ templateId: template.id, state }}
-                durationInFrames={template.durationInFrames}
-                fps={template.fps}
-                compositionWidth={template.width}
-                compositionHeight={template.height}
-                // Transparent so the photo underneath shows through.
-                style={{ width: w, height: h, background: "transparent" }}
-              />
-            </div>
+            <>
+              <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
+                <LoopingPlayer
+                  key={template.id}
+                  restartKey={template.id}
+                  component={TemplateComposition}
+                  inputProps={{ templateId: template.id, state }}
+                  durationInFrames={template.durationInFrames}
+                  fps={template.fps}
+                  compositionWidth={template.width}
+                  compositionHeight={template.height}
+                  // Transparent so the photo underneath shows through.
+                  style={{ width: w, height: h, background: "transparent" }}
+                />
+              </div>
+              <EditOverlay onEdit={() => onPlayingChange(false)} />
+            </>
           );
         }}
       />
-
-      {canPlay && (
-        <button
-          type="button"
-          onClick={onTogglePlay}
-          title={playing ? "Back to editing" : "Preview the animation"}
-          style={{
-            position: "absolute",
-            top: "26px",
-            right: "26px",
-            zIndex: 3,
-            height: "32px",
-            padding: "0 14px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            borderRadius: "80px",
-            border: "none",
-            background: "rgba(0,0,0,0.62)",
-            backdropFilter: "blur(8px)",
-            color: "#fff",
-            fontSize: "13px",
-            fontFamily: "inherit",
-            cursor: "pointer",
-          }}
-        >
-          {playing ? "■ Stop" : "▶ Play"}
-        </button>
-      )}
     </div>
   );
 }

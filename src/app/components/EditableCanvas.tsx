@@ -1,10 +1,11 @@
-import { useRef, useState, useCallback, useEffect } from "react";
-import type { CSSProperties } from "react";
-import type { TemplateDef, TemplateState, Align } from "../templates/schema";
-import { SAFE_X, SAFE_Y } from "../templates/schema";
+import { useRef, useState, useCallback, useEffect, useLayoutEffect } from "react";
+import type { CSSProperties, KeyboardEvent, RefObject } from "react";
+import type { TemplateDef, TemplateState, Align, FieldDef, LayerDef } from "../templates/schema";
+import { SAFE_X, SAFE_Y, canHide } from "../templates/schema";
 import { sp } from "../theme";
 import { LayerCanvas } from "./LayerCanvas";
 import { Scrim, scrimRegion } from "./layout";
+import { EyeIcon, PencilIcon } from "./icons";
 
 /**
  * The canvas as a place to work, rather than a preview to look at.
@@ -30,6 +31,9 @@ const SNAP_X: { v: number; align: Align }[] = [
 ];
 const SNAP_Y = [SAFE_Y, 0.5, 1 - SAFE_Y];
 
+/** Shown once ever, so returning users are never nagged. */
+const HINT_KEY = "quantumCanvas.hintDismissed";
+
 interface DragState {
   id: string;
   startPointerX: number;
@@ -42,23 +46,47 @@ export function EditableCanvas({
   template,
   state,
   boxW,
+  boxH,
   selectedId,
   onSelect,
   onMove,
   onEditText,
+  onToggleLayer,
+  onResizeText,
 }: {
   template: TemplateDef;
   state: TemplateState;
   boxW: number;
+  boxH: number;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number, align: Align) => void;
-  onEditText: (key: string, value: string) => void;
+  onEditText: (key: string, value: string | number) => void;
+  onToggleLayer: (id: string) => void;
+  onResizeText: (id: string, textWidth: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastTapRef = useRef<{ id: string; at: number } | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [guides, setGuides] = useState<{ x?: number; y?: number }>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [hintDismissed, setHintDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(HINT_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const dismissHint = useCallback(() => {
+    setHintDismissed(true);
+    try {
+      localStorage.setItem(HINT_KEY, "1");
+    } catch {
+      /* private browsing or storage disabled — the hint just won't persist */
+    }
+  }, []);
 
   const scale = boxW / template.width;
   // Everything has animated in by the last frame, so the canvas shows the
@@ -74,8 +102,26 @@ export function EditableCanvas({
     return { left: r.left - c.left, top: r.top - c.top, width: r.width, height: r.height };
   }, []);
 
+  const editableRect = useCallback((id: string) => {
+    const container = containerRef.current;
+    const el = container?.querySelector<HTMLElement>(`[data-layer-id="${id}"]`);
+    if (!container || !el) return null;
+    const target = largestTextElement(el) ?? el;
+    const c = container.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
+    return { left: r.left - c.left, top: r.top - c.top, width: r.width, height: r.height };
+  }, []);
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      // The selection toolbar and the first-run hint are siblings of the
+      // layer tree inside this same pointer-handling container, not
+      // descendants of a layer. Without this guard, pressing one of their
+      // buttons bubbles up as an "empty canvas" click first, deselecting and
+      // unmounting the toolbar before its own click handler ever runs.
+      if ((e.target as HTMLElement).closest("[data-canvas-ui]")) return;
+
+      dismissHint();
       const target = (e.target as HTMLElement).closest<HTMLElement>("[data-layer-id]");
       if (!target) {
         onSelect(null);
@@ -85,8 +131,20 @@ export function EditableCanvas({
       const id = target.dataset.layerId!;
       const current = state.layers[id];
       if (!current) return;
+      const layer = template.layers.find((l) => l.id === id);
 
       onSelect(id);
+      const now = e.timeStamp;
+      const lastTap = lastTapRef.current;
+      lastTapRef.current = { id, at: now };
+
+      if (layer && inlineField(layer) && lastTap?.id === id && now - lastTap.at < 420) {
+        e.preventDefault();
+        setDrag(null);
+        setEditingId(id);
+        return;
+      }
+
       // Capture keeps the drag alive if the pointer leaves the canvas, but it
       // throws for any pointer id the browser doesn't recognise. Losing capture
       // degrades the drag; losing the drag entirely is worse.
@@ -103,12 +161,19 @@ export function EditableCanvas({
         startY: current.y,
       });
     },
-    [onSelect, state.layers],
+    [dismissHint, onSelect, state.layers, template.layers],
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!drag) return;
+      if (!drag) {
+        // Hover affordance: only tracked while nothing is being dragged, so a
+        // drag in progress never flickers a hover outline onto other layers.
+        const target = (e.target as HTMLElement).closest<HTMLElement>("[data-layer-id]");
+        const id = target?.dataset.layerId ?? null;
+        setHoveredId((prev) => (prev === id ? prev : id));
+        return;
+      }
       const dx = (e.clientX - drag.startPointerX) / scale / template.width;
       const dy = (e.clientY - drag.startPointerY) / scale / template.height;
 
@@ -142,20 +207,45 @@ export function EditableCanvas({
     setGuides({});
   }, []);
 
+  const handlePointerLeave = useCallback(() => setHoveredId(null), []);
+
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       const target = (e.target as HTMLElement).closest<HTMLElement>("[data-layer-id]");
       if (!target) return;
       const id = target.dataset.layerId!;
       const layer = template.layers.find((l) => l.id === id);
-      if (layer?.kind === "text" && layer.textKey) setEditingId(id);
+      if (layer && inlineField(layer)) setEditingId(id);
     },
     [template.layers],
   );
 
-  const selectedRect = selectedId ? layerRect(selectedId) : null;
+  // Reading layout during render measures the DOM as it stood after the
+  // *previous* commit — a jump that isn't driven by the pointer (Auto-place,
+  // Shuffle, Tidy up, Reset) changes a layer's position and rect in the same
+  // update, so a same-render read would show the outline and toolbar exactly
+  // one commit behind the artwork. A layout effect re-measures once React has
+  // actually committed the new position, and its own state update is flushed
+  // before the browser paints, so there's no visible lag.
+  const [rects, setRects] = useState<{
+    selected: ReturnType<typeof layerRect>;
+    hovered: ReturnType<typeof layerRect>;
+    editing: ReturnType<typeof editableRect>;
+  }>({ selected: null, hovered: null, editing: null });
+
+  useLayoutEffect(() => {
+    setRects({
+      selected: selectedId ? layerRect(selectedId) : null,
+      hovered: hoveredId && hoveredId !== selectedId ? layerRect(hoveredId) : null,
+      editing: editingId ? editableRect(editingId) : null,
+    });
+  }, [selectedId, hoveredId, editingId, state, boxW, boxH, layerRect, editableRect]);
+
+  const { selected: selectedRect, hovered: hoveredRect, editing: editingRect } = rects;
   const editingLayer = editingId ? template.layers.find((l) => l.id === editingId) : null;
-  const editingRect = editingId ? layerRect(editingId) : null;
+  const editingField = editingLayer ? inlineField(editingLayer) : null;
+  const selectedLayer = selectedId ? template.layers.find((l) => l.id === selectedId) : null;
+  const selectedEditable = selectedLayer ? inlineField(selectedLayer) : null;
 
   return (
     <div
@@ -164,6 +254,7 @@ export function EditableCanvas({
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onPointerLeave={handlePointerLeave}
       onDoubleClick={handleDoubleClick}
       style={{
         position: "absolute",
@@ -200,34 +291,384 @@ export function EditableCanvas({
       {guides.x !== undefined && <Guide style={{ left: `${guides.x * 100}%`, top: 0, bottom: 0, width: "1px" }} />}
       {guides.y !== undefined && <Guide style={{ top: `${guides.y * 100}%`, left: 0, right: 0, height: "1px" }} />}
 
-      {/* Selection outline */}
-      {selectedRect && !editingId && (
+      {/* Hover affordance: a light outline on whatever the pointer sits over,
+          so the canvas reads as editable before anything is clicked. */}
+      {hoveredRect && !drag && (
         <div
           style={{
             position: "absolute",
-            left: selectedRect.left - 4,
-            top: selectedRect.top - 4,
-            width: selectedRect.width + 8,
-            height: selectedRect.height + 8,
-            border: `2px solid ${sp.blue}`,
+            left: hoveredRect.left - 4,
+            top: hoveredRect.top - 4,
+            width: hoveredRect.width + 8,
+            height: hoveredRect.height + 8,
+            border: `1.5px dashed ${sp.borderActive}`,
             borderRadius: "3px",
             pointerEvents: "none",
           }}
         />
       )}
 
+      {/* Selection outline with corner handles, so a selected element reads
+          as a manipulable object rather than a passive highlight. */}
+      {selectedRect && !editingId && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              left: selectedRect.left - 4,
+              top: selectedRect.top - 4,
+              width: selectedRect.width + 8,
+              height: selectedRect.height + 8,
+              border: `2px solid ${sp.blue}`,
+              borderRadius: "3px",
+              pointerEvents: "none",
+            }}
+          />
+          {corners(selectedRect).map((c, i) => (
+            <Handle key={i} left={c.left} top={c.top} />
+          ))}
+        </>
+      )}
+
+      {/* Wrap-width handle — text only, since artwork has no lines to reflow.
+          Dragging it sets where the copy wraps, like a text box's edge. */}
+      {selectedLayer?.kind === "text" && selectedRect && !editingId && !drag && (
+        <ResizeHandle
+          rect={selectedRect}
+          align={state.layers[selectedLayer.id]?.align ?? "left"}
+          boxW={boxW}
+          startWidth={state.layers[selectedLayer.id]?.textWidth ?? 1 - 2 * SAFE_X}
+          onResize={(tw) => onResizeText(selectedLayer.id, tw)}
+        />
+      )}
+
+      {/* Floating contextual toolbar, anchored to the selection — the few
+          actions that matter for this one element, so the eye never has to
+          leave the canvas for the panel. */}
+      {selectedLayer && selectedRect && !editingId && !drag && (
+        <SelectionToolbar
+          rect={selectedRect}
+          boxW={boxW}
+          boxH={boxH}
+          visible={state.layers[selectedLayer.id]?.visible !== false}
+          hideAllowed={canHide(state)}
+          canEdit={Boolean(selectedEditable)}
+          onEdit={() => setEditingId(selectedLayer.id)}
+          onToggleVisible={() => onToggleLayer(selectedLayer.id)}
+        />
+      )}
+
+      {/* First-run hint: shown once, until the canvas is touched at all. */}
+      {!hintDismissed && !selectedId && !drag && <FirstRunHint onDismiss={dismissHint} />}
+
       {/* Inline text editing, sized and coloured to match what it replaces */}
-      {editingLayer?.textKey && editingRect && (
+      {editingField && editingRect && (
         <InlineEditor
           rect={editingRect}
           scale={scale}
           layerId={editingId!}
           container={containerRef.current}
-          value={String(state.values[editingLayer.textKey] ?? "")}
-          onChange={(v) => onEditText(editingLayer.textKey!, v)}
+          field={editingField}
+          value={String(state.values[editingField.key] ?? "")}
+          onChange={(v) => onEditText(editingField.key, v)}
           onDone={() => setEditingId(null)}
         />
       )}
+    </div>
+  );
+}
+
+function inlineField(layer: LayerDef): Extract<FieldDef, { type: "text" | "number" }> | null {
+  if (layer.kind === "text" && layer.textKey) {
+    const field = layer.fields.find((f) => f.key === layer.textKey && f.type === "text");
+    return field && field.type === "text" ? field : null;
+  }
+
+  const editable = layer.fields.filter((field) => field.type === "text" || field.type === "number");
+  return editable.length === 1 ? editable[0] as Extract<FieldDef, { type: "text" | "number" }> : null;
+}
+
+function largestTextElement(root: HTMLElement): HTMLElement | null {
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>("*")).filter((el) => {
+    const text = el.textContent?.trim();
+    return text && Array.from(el.children).every((child) => !child.textContent?.trim());
+  });
+
+  let best: HTMLElement | null = null;
+  let bestSize = 0;
+  for (const el of candidates) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    const size = parseFloat(getComputedStyle(el).fontSize) || rect.height;
+    if (size > bestSize) {
+      best = el;
+      bestSize = size;
+    }
+  }
+  return best;
+}
+
+function corners(rect: { left: number; top: number; width: number; height: number }) {
+  const left = rect.left - 4;
+  const top = rect.top - 4;
+  const right = rect.left + rect.width + 4;
+  const bottom = rect.top + rect.height + 4;
+  return [
+    { left, top },
+    { left: right, top },
+    { left, top: bottom },
+    { left: right, top: bottom },
+  ];
+}
+
+function Handle({ left, top }: { left: number; top: number }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: left - 4,
+        top: top - 4,
+        width: "8px",
+        height: "8px",
+        borderRadius: "2px",
+        background: sp.white,
+        border: `1.5px solid ${sp.blue}`,
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
+/**
+ * The wrap-width handle on a text layer's trailing edge.
+ *
+ * Marked `data-canvas-ui` so the canvas treats it as chrome, not a layer, and
+ * doesn't deselect on press. The drag is delta-based off the start width, so it
+ * never depends on where the rendered box happens to sit — dragging in reflows
+ * the copy to a narrower column; dragging out lets it run wider.
+ */
+function ResizeHandle({
+  rect,
+  align,
+  boxW,
+  startWidth,
+  onResize,
+}: {
+  rect: { left: number; top: number; width: number; height: number };
+  align: Align;
+  boxW: number;
+  startWidth: number;
+  onResize: (textWidth: number) => void;
+}) {
+  const drag = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  // Right align grows leftward, so its handle sits on the left edge; the others
+  // grow rightward and take the right edge.
+  const onLeftEdge = align === "right";
+  const HALF = 4;
+  const left = onLeftEdge ? rect.left - HALF : rect.left + rect.width - HALF;
+  const top = rect.top + rect.height / 2 - 14;
+
+  return (
+    <div
+      data-canvas-ui
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        drag.current = { startX: e.clientX, startWidth };
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* not a live pointer — resize still works without capture */
+        }
+      }}
+      onPointerMove={(e) => {
+        if (!drag.current) return;
+        const d = (e.clientX - drag.current.startX) / boxW;
+        // Centre grows from both edges, so the right edge moving out by d widens
+        // the column by 2d; left-align by d; right-align shrinks as d grows.
+        const delta = align === "center" ? d * 2 : onLeftEdge ? -d : d;
+        onResize(clamp(drag.current.startWidth + delta, 0.15, 0.95));
+      }}
+      onPointerUp={(e) => {
+        drag.current = null;
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+          /* nothing captured */
+        }
+      }}
+      style={{
+        position: "absolute",
+        left,
+        top,
+        width: "8px",
+        height: "28px",
+        borderRadius: "999px",
+        background: sp.white,
+        border: `1.5px solid ${sp.blue}`,
+        cursor: "ew-resize",
+        zIndex: 4,
+        touchAction: "none",
+      }}
+    />
+  );
+}
+
+/** Pill-shaped toolbar, floating beneath the selection — the Photoroom pattern. */
+const TOOLBAR_H = 32;
+const TOOLBAR_GAP = 8;
+
+function SelectionToolbar({
+  rect,
+  boxW,
+  boxH,
+  visible,
+  hideAllowed,
+  canEdit,
+  onEdit,
+  onToggleVisible,
+}: {
+  rect: { left: number; top: number; width: number; height: number };
+  boxW: number;
+  boxH: number;
+  visible: boolean;
+  hideAllowed: boolean;
+  canEdit: boolean;
+  onEdit: () => void;
+  onToggleVisible: () => void;
+}) {
+  const actionCount = canEdit ? 2 : 1;
+  const estWidth = actionCount * 32 + 8;
+
+  const below = rect.top + rect.height + TOOLBAR_GAP + TOOLBAR_H <= boxH;
+  const top = below ? rect.top + rect.height + TOOLBAR_GAP : Math.max(4, rect.top - TOOLBAR_GAP - TOOLBAR_H);
+  const centerX = rect.left + rect.width / 2;
+  const left = clamp(centerX, estWidth / 2 + 4, boxW - estWidth / 2 - 4);
+
+  return (
+    <div
+      data-canvas-ui
+      style={{
+        position: "absolute",
+        left,
+        top,
+        transform: "translateX(-50%)",
+        display: "flex",
+        alignItems: "center",
+        gap: "2px",
+        padding: "4px",
+        height: `${TOOLBAR_H}px`,
+        borderRadius: "999px",
+        background: "rgba(0,0,0,0.72)",
+        backdropFilter: "blur(8px)",
+        zIndex: 4,
+      }}
+    >
+      {canEdit && (
+        <ToolbarIcon title="Edit on canvas" onClick={onEdit}>
+          <PencilIcon width={16} height={16} />
+        </ToolbarIcon>
+      )}
+      <ToolbarIcon
+        title={visible ? "Hide" : "Show"}
+        onClick={onToggleVisible}
+        disabled={visible && !hideAllowed}
+      >
+        <EyeIcon off={!visible} width={16} height={16} />
+      </ToolbarIcon>
+    </div>
+  );
+}
+
+function ToolbarIcon({
+  title,
+  onClick,
+  disabled,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: "24px",
+        height: "24px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "none",
+        borderRadius: "999px",
+        background: "none",
+        color: disabled ? "rgba(255,255,255,0.35)" : "#fff",
+        cursor: disabled ? "not-allowed" : "pointer",
+        padding: 0,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FirstRunHint({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div
+      data-canvas-ui
+      style={{
+        position: "absolute",
+        top: "12px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 4,
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        maxWidth: "calc(100% - 24px)",
+        padding: "6px 8px 6px 12px",
+        borderRadius: "999px",
+        background: "rgba(0,0,0,0.72)",
+        backdropFilter: "blur(8px)",
+        color: "#fff",
+        fontSize: "11px",
+        lineHeight: "14px",
+        pointerEvents: "auto",
+      }}
+    >
+      <span>Tap to select · drag to move · double-click text to edit</span>
+      <button
+        type="button"
+        title="Dismiss"
+        aria-label="Dismiss"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDismiss();
+        }}
+        style={{
+          flexShrink: 0,
+          width: "18px",
+          height: "18px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "none",
+          borderRadius: "999px",
+          background: "rgba(255,255,255,0.16)",
+          color: "#fff",
+          fontSize: "11px",
+          lineHeight: 1,
+          cursor: "pointer",
+          padding: 0,
+        }}
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -255,6 +696,7 @@ function InlineEditor({
   scale,
   layerId,
   container,
+  field,
   value,
   onChange,
   onDone,
@@ -263,11 +705,12 @@ function InlineEditor({
   scale: number;
   layerId: string;
   container: HTMLDivElement | null;
+  field: Extract<FieldDef, { type: "text" | "number" }>;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (v: string | number) => void;
   onDone: () => void;
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const ref = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const [font, setFont] = useState<CSSProperties>({});
 
   useEffect(() => {
@@ -276,10 +719,11 @@ function InlineEditor({
     // Copy the real styling off the rendered layer so typing looks like the
     // result, rather than like a form field floating over it.
     //
-    // Specifically the *styled* element, two levels down: the layer wrapper
-    // holds position, its child holds the entrance animation, and only the
-    // grandchild carries the type. Reading the wrapper gets inherited 16px.
-    const el = container?.querySelector<HTMLElement>(`[data-layer-id="${layerId}"] > div > div`);
+    // Text layers and custom artwork put their visible value at different
+    // depths, so use the largest leaf text node rather than the positioned
+    // wrapper. Reading the wrapper gets inherited 16px.
+    const layer = container?.querySelector<HTMLElement>(`[data-layer-id="${layerId}"]`);
+    const el = layer ? largestTextElement(layer) ?? layer : null;
     if (!el) return;
     const cs = getComputedStyle(el);
     setFont({
@@ -292,42 +736,66 @@ function InlineEditor({
     });
   }, [container, layerId, scale]);
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onDone();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onDone();
+    }
+    // Stop the native event too, or the modal's window listener sees the
+    // same Escape and closes everything mid-edit.
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+  };
+
+  const commonStyle: CSSProperties = {
+    position: "absolute",
+    left: rect.left - 6,
+    top: rect.top - 6,
+    width: rect.width + 12,
+    height: rect.height + 12,
+    padding: "2px 4px",
+    margin: 0,
+    border: `2px solid ${sp.blue}`,
+    borderRadius: "3px",
+    background: "rgba(0,0,0,0.55)",
+    resize: "none",
+    outline: "none",
+    overflow: "hidden",
+    ...font,
+  };
+
+  if (field.type === "number") {
+    return (
+      <input
+        ref={ref as RefObject<HTMLInputElement>}
+        value={value}
+        onBlur={onDone}
+        onKeyDown={handleKeyDown}
+        style={commonStyle}
+        inputMode="numeric"
+        onChange={(e) => {
+          const raw = e.target.value.replace(/[^\d.-]/g, "");
+          const next = Number(raw);
+          if (!Number.isFinite(next)) return;
+          onChange(clamp(next, field.min, field.max));
+        }}
+      />
+    );
+  }
+
   return (
     <textarea
-      ref={ref}
+      ref={ref as RefObject<HTMLTextAreaElement>}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
       onBlur={onDone}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          onDone();
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          onDone();
-        }
-        // Stop the native event too, or the modal's window listener sees the
-        // same Escape and closes everything mid-edit.
-        e.stopPropagation();
-        e.nativeEvent.stopImmediatePropagation();
-      }}
-      style={{
-        position: "absolute",
-        left: rect.left - 6,
-        top: rect.top - 6,
-        width: rect.width + 12,
-        height: rect.height + 12,
-        padding: "2px 4px",
-        margin: 0,
-        border: `2px solid ${sp.blue}`,
-        borderRadius: "3px",
-        background: "rgba(0,0,0,0.55)",
-        resize: "none",
-        outline: "none",
-        overflow: "hidden",
-        ...font,
-      }}
+      onKeyDown={handleKeyDown}
+      style={commonStyle}
+      maxLength={field.maxLength}
+      onChange={(e) => onChange(e.target.value)}
     />
   );
 }

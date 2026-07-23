@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { Align, TemplateDef, TemplateState, PostCopy } from "../templates/schema";
-import { getDefaults, tidyPositions, canHide } from "../templates/schema";
+import { getDefaults, canHide } from "../templates/schema";
 import { shuffle } from "./shuffle";
-import { suggestPosition } from "./smartPlacement";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
 import { CloseIcon } from "./icons";
@@ -73,7 +72,26 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
     // Post copy flows in here, so the user never meets a blank box.
     setState(getDefaults(t, post));
     setSelectedId(null);
-  }, [post]);
+    // The modal opens on finished media, so a chosen template plays its motion
+    // straight away rather than dropping the user into an editor. Stills have
+    // no motion to play, so they open ready to edit.
+    setPlaying(mediaType === "video");
+  }, [post, mediaType]);
+
+  /** Returning to playback always clears the selection, so the canvas is never
+   *  left showing a stale outline over a composition it can't interact with. */
+  const handlePlayingChange = useCallback((p: boolean) => {
+    setPlaying(p);
+    if (p) setSelectedId(null);
+  }, []);
+
+  /** Selecting anything — on the canvas or from the panel list — means the user
+   *  wants to work on it, so it drops out of playback into the editable canvas.
+   *  A selection outline is meaningless over a running composition anyway. */
+  const handleSelectLayer = useCallback((id: string | null) => {
+    setSelectedId(id);
+    if (id) setPlaying(false);
+  }, []);
 
   const handleFieldChange = useCallback((key: string, value: string | number) => {
     setState((prev) => ({ ...prev, values: { ...prev.values, [key]: value } }));
@@ -97,17 +115,18 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
     });
   }, []);
 
+  /** Set a text layer's wrap width (normalised fraction of the canvas). */
+  const handleResizeText = useCallback((id: string, textWidth: number) => {
+    setState((prev) => {
+      const layer = prev.layers[id];
+      if (!layer) return prev;
+      return { ...prev, layers: { ...prev.layers, [id]: { ...layer, textWidth } } };
+    });
+  }, []);
+
   const handleShuffle = useCallback(() => {
     if (template) setState((prev) => shuffle(prev));
   }, [template]);
-
-  /** Move the selected element to the quietest part of the photo. */
-  const handleAutoPlace = useCallback(async () => {
-    if (!selectedId) return;
-    const pos = await suggestPosition(media.src);
-    if (!pos) return;
-    handleMove(selectedId, pos.x, pos.y, pos.align);
-  }, [selectedId, media.src, handleMove]);
 
   const handleReset = useCallback(() => {
     if (template) {
@@ -115,10 +134,6 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
       setSelectedId(null);
     }
   }, [template, post]);
-
-  const handleTidy = useCallback(() => {
-    if (template) setState((prev) => tidyPositions(template, prev));
-  }, [template]);
 
   const isDirty = template
     ? JSON.stringify(state) !== JSON.stringify(getDefaults(template, post))
@@ -188,6 +203,7 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
           }}
         >
           <div
+            className="scroll-area"
             style={{
               flex: 1,
               minHeight: 0,
@@ -203,7 +219,7 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
             <IconRail active={activeTab} onChange={setActiveTab} />
 
             {activeTab === "templates" ? (
-              <TemplatePanel activeTemplateId={template?.id ?? null} onSelect={handleSelect} />
+              <TemplatePanel media={media} post={post} activeTemplateId={template?.id ?? null} onSelect={handleSelect} />
             ) : (
               <TextPanel />
             )}
@@ -214,11 +230,13 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
               state={state}
               mediaType={mediaType}
               playing={playing}
-              onTogglePlay={() => setPlaying((p) => !p)}
+              onPlayingChange={handlePlayingChange}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={handleSelectLayer}
               onMove={handleMove}
               onEditText={handleFieldChange}
+              onToggleLayer={handleToggleLayer}
+              onResizeText={handleResizeText}
             />
 
             {activeTab === "templates" && (
@@ -226,13 +244,11 @@ export function EditMediaModal({ media, mediaType, post, onClose, onSave }: Prop
                 template={template}
                 state={state}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                onSelect={handleSelectLayer}
                 onFieldChange={handleFieldChange}
                 onToggleLayer={handleToggleLayer}
                 onReset={handleReset}
-                onTidy={handleTidy}
                 onShuffle={handleShuffle}
-                onAutoPlace={handleAutoPlace}
                 canReset={isDirty}
               />
             )}

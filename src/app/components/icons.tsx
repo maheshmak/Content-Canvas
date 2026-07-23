@@ -47,3 +47,35 @@ export function ResetIcon({ width = 32, height = 32, ...props }: IconProps) {
     </svg>
   );
 }
+
+/** Layer visibility — shared by the panel's layer list and the canvas's selection toolbar. */
+export function EyeIcon({ off = false, width = 18, height = 18, ...props }: IconProps & { off?: boolean }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden {...props}>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="M3 3l18 18" strokeLinecap="round" />}
+    </svg>
+  );
+}
+
+/** Edit-text glyph for the canvas selection toolbar. */
+export function PencilIcon({ width = 16, height = 16, ...props }: IconProps) {
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      {...props}
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
