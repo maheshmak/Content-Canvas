@@ -365,7 +365,7 @@ function Inspector({
           numeral's digit) — the same controls, scoped to that text only. */}
       {(isText || hasInternalText) && (
         <div style={{ display: "flex", flexDirection: "column", gap: space[12] }}>
-          <Field label="Type">
+          <Field label="Font">
             <Select
               value={overrides.fontFamily ?? ""}
               options={FONT_OPTIONS}
