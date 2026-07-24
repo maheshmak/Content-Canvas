@@ -429,15 +429,15 @@ function Inspector({
       {(selLayer?.kind === "custom" || selExtra?.kind === "sticker") && (
         <div style={{ display: "flex", flexDirection: "column", gap: space[8] }}>
           {hasInternalText ? (
-            <div style={{ display: "flex", gap: space[8] }}>
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: space[4] }}>
+            <div style={{ display: "flex", gap: space[8], width: "100%" }}>
+              <div style={{ flex: "1 1 0px", minWidth: 0, display: "flex", flexDirection: "column", gap: space[4] }}>
                 <SectionLabel>Shape Color</SectionLabel>
                 <ColorInput
                   value={stickerColorOverride ?? accent}
                   onChange={(hex) => onSetColorOverride(selectedId, hex)}
                 />
               </div>
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: space[4] }}>
+              <div style={{ flex: "1 1 0px", minWidth: 0, display: "flex", flexDirection: "column", gap: space[4] }}>
                 <SectionLabel>Text Color</SectionLabel>
                 <ColorInput
                   value={overrides.color ?? "#ffffff"}
