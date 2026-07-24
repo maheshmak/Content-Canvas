@@ -20,14 +20,14 @@ export interface CompositionProps {
 
 export function TemplateComposition({ templateId, state }: CompositionProps) {
   const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
+  const { width, height, fps } = useVideoConfig();
   const template = templates.find((t) => t.id === templateId);
   if (!template) return null;
 
   return (
     <AbsoluteFill style={{ overflow: "hidden" }}>
       {template.scrim ? <Scrim region={scrimRegion(state)} /> : null}
-      <LayerCanvas template={template} state={state} frame={frame} width={width} height={height} />
+      <LayerCanvas template={template} state={state} frame={frame} fps={fps} width={width} height={height} />
     </AbsoluteFill>
   );
 }

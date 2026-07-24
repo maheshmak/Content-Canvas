@@ -1,12 +1,8 @@
-import { useRef, useState, useLayoutEffect, useEffect } from "react";
+import { useRef, useState, useLayoutEffect, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
-import { Player } from "@remotion/player";
-import type { PlayerRef } from "@remotion/player";
 import type { Align, TemplateDef, TemplateState } from "../templates/schema";
 import { sp } from "../theme";
-import { TemplateComposition } from "./TemplateComposition";
 import { EditableCanvas } from "./EditableCanvas";
-import { PencilIcon } from "./icons";
 
 export interface MediaItem {
   id: string;
@@ -105,129 +101,108 @@ function FittedFrame({
   );
 }
 
-type PlayerProps = React.ComponentProps<typeof Player>;
-
-/**
- * Looping playback for Play mode.
- *
- * Playback starts through the player ref rather than `autoPlay`: the modal opens
- * without a user gesture, and autoPlay alone leaves the player reporting
- * isPlaying:true with its clock pinned to frame 0. Seeking first reliably starts
- * it, with a re-check for the case where it mounts backgrounded.
- */
-function LoopingPlayer(props: PlayerProps & { restartKey: string }) {
-  const ref = useRef<PlayerRef>(null);
-  const { restartKey, ...playerProps } = props;
-
-  useEffect(() => {
-    const player = ref.current;
-    if (!player) return;
-    const start = () => {
-      player.seekTo(0);
-      player.play();
-    };
-    start();
-    const check = window.setTimeout(() => {
-      if (player.getCurrentFrame() === 0) start();
-    }, 300);
-    return () => window.clearTimeout(check);
-  }, [restartKey]);
-
-  return <Player ref={ref} {...playerProps} loop controls={false} />;
-}
-
 /**
  * The centre column.
  *
- * The post's motion plays as soon as a template is chosen — the modal opens on
- * the finished thing, so the default is to watch it, not to be dropped into an
- * editor. Hovering the frame reveals a single "Edit" affordance; taking it
- * freezes the composition into the interactive canvas (a playing composition is
- * rendered video frames, so nothing in it is clickable — edit and play cannot
- * be the same surface). Clicking off the frame hands it back to playback. There
- * is no mode switch to hunt for; the surface itself offers the one next step.
+ * The canvas is always editable — click, drag, type straight away. There is
+ * no explicit Play/Pause control: playback is a gesture. Clicking any empty
+ * area — the padding around the frame, or empty canvas inside it — toggles
+ * playback; clicking an element always selects it (pausing first, if it was
+ * playing). Play is real spring motion computed by the same renderer the
+ * export uses, so what you preview is what you get.
  */
-
-/** The hover-revealed way into edit mode, laid over the playing composition. */
-function EditOverlay({ onEdit }: { onEdit: () => void }) {
-  const [hovering, setHovering] = useState(false);
-  return (
-    <div
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 3,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <button
-        type="button"
-        onClick={onEdit}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          height: "40px",
-          padding: "0 20px",
-          borderRadius: "999px",
-          border: "none",
-          background: "rgba(0,0,0,0.72)",
-          backdropFilter: "blur(8px)",
-          color: "#fff",
-          fontSize: "14px",
-          fontFamily: "inherit",
-          cursor: "pointer",
-          opacity: hovering ? 1 : 0,
-          transform: hovering ? "scale(1)" : "scale(0.96)",
-          transition: "opacity 140ms, transform 140ms",
-        }}
-      >
-        <PencilIcon /> Edit
-      </button>
-    </div>
-  );
-}
 
 export function MediaStage({
   media,
   template,
   state,
-  mediaType,
-  playing,
-  onPlayingChange,
   selectedId,
   onSelect,
   onMove,
   onEditText,
+  onEditExtraText,
   onToggleLayer,
   onResizeText,
+  onDuplicate,
+  onDelete,
 }: {
   media: MediaItem;
   template: TemplateDef | null;
   state: TemplateState;
-  mediaType: MediaType;
-  playing: boolean;
-  onPlayingChange: (playing: boolean) => void;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number, align: Align) => void;
   onEditText: (key: string, value: string | number) => void;
+  onEditExtraText: (id: string, text: string) => void;
   onToggleLayer: (id: string) => void;
   onResizeText: (id: string, textWidth: number) => void;
+  onDuplicate: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
-  const canPlay = Boolean(template) && mediaType === "video";
+  const [previewFrame, setPreviewFrame] = useState<number | null>(null);
+  const rafRef = useRef<number | null>(null);
 
-  // In edit mode, a click that lands off the frame — on the surrounding stage —
-  // returns to playback. Clicks inside the frame belong to the canvas (select,
-  // drag, deselect) and must not trigger it.
+  const stopPreview = useCallback(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    setPreviewFrame(null);
+  }, []);
+
+  /** Loops indefinitely — the post plays on repeat until a click on the
+   *  canvas interrupts it (`stopPreview`), never settling into a single
+   *  static frame on its own. */
+  const play = useCallback(() => {
+    if (!template) return;
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    const total = template.durationInFrames;
+    const fps = template.fps;
+    const startedAt = performance.now();
+    const tick = (now: number) => {
+      const elapsed = Math.floor(((now - startedAt) / 1000) * fps);
+      setPreviewFrame(elapsed % total);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    setPreviewFrame(0);
+    rafRef.current = requestAnimationFrame(tick);
+  }, [template]);
+
+  // Choosing a template plays its motion straight away, on a loop — the modal
+  // opens on the finished thing, so the default is to watch it happen, not to
+  // be dropped straight into a static editor. A stale RAF from the previous
+  // template is stopped first so switching templates never ticks against old
+  // data.
+  useEffect(() => {
+    stopPreview();
+    if (template) play();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template?.id]);
+
+  // Changing the Motion setting mid-loop should read as an immediate change,
+  // not one that only shows up once the current cycle happens to wrap back to
+  // frame 0. Restart the loop from frame 0 right away, but only while a
+  // preview is actually running — a paused, settled frame has nothing to
+  // instantly reflect.
+  const isPreviewingRef = useRef(false);
+  isPreviewingRef.current = previewFrame != null;
+  useEffect(() => {
+    if (isPreviewingRef.current) play();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.values.animationStyle]);
+
+  // Clicks that land on the padding around the frame (not inside it — the
+  // frame and EditableCanvas handle their own clicks) toggle playback, same
+  // as an empty-canvas click does inside the frame. This is what makes "any
+  // area of the Canvas section" — padding included — part of the gesture. It
+  // also deselects, same as an empty-canvas click: without this, a selection
+  // could only ever be cleared by a click that happened to land inside the
+  // frame, leaving Customize stuck showing the last-selected element's
+  // controls after a click anywhere else on the stage.
   const handleStagePointerDown = (e: React.PointerEvent) => {
-    if (!playing && canPlay && !(e.target as HTMLElement).closest("[data-frame]")) {
-      onPlayingChange(true);
-    }
+    if (!template) return;
+    if ((e.target as HTMLElement).closest("[data-frame]")) return;
+    onSelect(null);
+    if (previewFrame != null) stopPreview();
+    else play();
   };
 
   return (
@@ -255,42 +230,25 @@ export function MediaStage({
         media={media}
         render={({ w, h }) => {
           if (!template) return null;
-
-          if (!playing) {
-            return (
-              <EditableCanvas
-                template={template}
-                state={state}
-                boxW={w}
-                boxH={h}
-                selectedId={selectedId}
-                onSelect={onSelect}
-                onMove={onMove}
-                onEditText={onEditText}
-                onToggleLayer={onToggleLayer}
-                onResizeText={onResizeText}
-              />
-            );
-          }
-
           return (
-            <>
-              <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-                <LoopingPlayer
-                  key={template.id}
-                  restartKey={template.id}
-                  component={TemplateComposition}
-                  inputProps={{ templateId: template.id, state }}
-                  durationInFrames={template.durationInFrames}
-                  fps={template.fps}
-                  compositionWidth={template.width}
-                  compositionHeight={template.height}
-                  // Transparent so the photo underneath shows through.
-                  style={{ width: w, height: h, background: "transparent" }}
-                />
-              </div>
-              <EditOverlay onEdit={() => onPlayingChange(false)} />
-            </>
+            <EditableCanvas
+              template={template}
+              state={state}
+              boxW={w}
+              boxH={h}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              onMove={onMove}
+              onEditText={onEditText}
+              onEditExtraText={onEditExtraText}
+              onToggleLayer={onToggleLayer}
+              onResizeText={onResizeText}
+              onDuplicate={onDuplicate}
+              onDelete={onDelete}
+              previewFrame={previewFrame}
+              onCancelPreview={stopPreview}
+              onEmptyClick={play}
+            />
           );
         }}
       />

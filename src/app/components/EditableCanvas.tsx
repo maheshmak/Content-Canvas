@@ -1,11 +1,12 @@
 import { useRef, useState, useCallback, useEffect, useLayoutEffect } from "react";
 import type { CSSProperties, KeyboardEvent, RefObject } from "react";
 import type { TemplateDef, TemplateState, Align, FieldDef, LayerDef } from "../templates/schema";
-import { SAFE_X, SAFE_Y, canHide } from "../templates/schema";
+import { SAFE_X, SAFE_Y, canHide, elementPosition } from "../templates/schema";
 import { sp } from "../theme";
 import { LayerCanvas } from "./LayerCanvas";
 import { Scrim, scrimRegion } from "./layout";
 import { EyeIcon, PencilIcon } from "./icons";
+import { stickerComponentId } from "../templates/art";
 
 /**
  * The canvas as a place to work, rather than a preview to look at.
@@ -15,9 +16,10 @@ import { EyeIcon, PencilIcon } from "./icons";
  * without measuring, so hit-testing, dragging and outlining all reduce to
  * reading and writing `x/y/align`.
  *
- * Rendered without Remotion, at a settled frame. A playing composition is
- * rendered video frames and nothing in it is clickable, which is why edit and
- * play are separate modes rather than one surface.
+ * Rendered without Remotion. The canvas is always editable; Play is a transient
+ * button that drives `previewFrame` through the entrance and then lands back on
+ * the settled frame, so there is no separate "play mode" to leave — selection
+ * and everything else survive the preview.
  */
 
 /** How close (in normalised units) a drag must get before it snaps. */
@@ -33,6 +35,16 @@ const SNAP_Y = [SAFE_Y, 0.5, 1 - SAFE_Y];
 
 /** Shown once ever, so returning users are never nagged. */
 const HINT_KEY = "quantumCanvas.hintDismissed";
+
+/** The inline-edit field for an added text element (its copy is its own, not a
+ *  template field), so the editor can treat it like any other text edit. */
+const EXTRA_TEXT_FIELD: Extract<FieldDef, { type: "text" }> = {
+  key: "__extraText__",
+  type: "text",
+  label: "Text",
+  default: "",
+  maxLength: 240,
+};
 
 interface DragState {
   id: string;
@@ -51,8 +63,14 @@ export function EditableCanvas({
   onSelect,
   onMove,
   onEditText,
+  onEditExtraText,
   onToggleLayer,
   onResizeText,
+  onDuplicate,
+  onDelete,
+  previewFrame = null,
+  onCancelPreview,
+  onEmptyClick,
 }: {
   template: TemplateDef;
   state: TemplateState;
@@ -62,8 +80,18 @@ export function EditableCanvas({
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number, align: Align) => void;
   onEditText: (key: string, value: string | number) => void;
+  onEditExtraText: (id: string, text: string) => void;
   onToggleLayer: (id: string) => void;
   onResizeText: (id: string, textWidth: number) => void;
+  onDuplicate: (id: string) => void;
+  onDelete: (id: string) => void;
+  /** When set, the canvas plays the entrance at this frame and hides all edit
+   *  chrome; `null` shows the settled, fully-editable composition. */
+  previewFrame?: number | null;
+  onCancelPreview?: () => void;
+  /** A click that hit no element while static — starts playback, so an empty
+   *  canvas click is part of the same play/pause gesture as the padding. */
+  onEmptyClick?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef<{ id: string; at: number } | null>(null);
@@ -89,9 +117,11 @@ export function EditableCanvas({
   }, []);
 
   const scale = boxW / template.width;
-  // Everything has animated in by the last frame, so the canvas shows the
-  // finished composition rather than a half-played one.
-  const frame = template.durationInFrames - 1;
+  const previewing = previewFrame != null;
+  // While previewing, the canvas plays the entrance; otherwise everything has
+  // animated in by the last frame, so it shows the finished composition rather
+  // than a half-played one.
+  const frame = previewing ? previewFrame : template.durationInFrames - 1;
 
   const layerRect = useCallback((id: string) => {
     const container = containerRef.current;
@@ -123,22 +153,38 @@ export function EditableCanvas({
 
       dismissHint();
       const target = (e.target as HTMLElement).closest<HTMLElement>("[data-layer-id]");
+
+      // A click during preview means "let me back in" — stop playback and,
+      // if the click actually landed on an element, select it in the same
+      // gesture. Layers stay hit-testable throughout playback (see
+      // `interactive` below) specifically so this can happen in one click
+      // instead of one to pause and a second to select.
+      if (previewing) {
+        onCancelPreview?.();
+        onSelect(target ? target.dataset.layerId! : null);
+        if (!target) setEditingId(null);
+        return;
+      }
+
       if (!target) {
         onSelect(null);
         setEditingId(null);
+        onEmptyClick?.();
         return;
       }
       const id = target.dataset.layerId!;
-      const current = state.layers[id];
-      if (!current) return;
+      const pos = elementPosition(state, id);
+      if (!pos) return;
       const layer = template.layers.find((l) => l.id === id);
+      const extra = state.extras.find((x) => x.id === id);
+      const canInlineEdit = layer ? Boolean(inlineField(layer)) : extra?.kind === "text";
 
       onSelect(id);
       const now = e.timeStamp;
       const lastTap = lastTapRef.current;
       lastTapRef.current = { id, at: now };
 
-      if (layer && inlineField(layer) && lastTap?.id === id && now - lastTap.at < 420) {
+      if (canInlineEdit && lastTap?.id === id && now - lastTap.at < 420) {
         e.preventDefault();
         setDrag(null);
         setEditingId(id);
@@ -157,15 +203,16 @@ export function EditableCanvas({
         id,
         startPointerX: e.clientX,
         startPointerY: e.clientY,
-        startX: current.x,
-        startY: current.y,
+        startX: pos.x,
+        startY: pos.y,
       });
     },
-    [dismissHint, onSelect, state.layers, template.layers],
+    [previewing, onCancelPreview, onEmptyClick, dismissHint, onSelect, state, template.layers],
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
+      if (previewing) return;
       if (!drag) {
         // Hover affordance: only tracked while nothing is being dragged, so a
         // drag in progress never flickers a hover outline onto other layers.
@@ -179,7 +226,7 @@ export function EditableCanvas({
 
       let x = clamp(drag.startX + dx, 0, 1);
       let y = clamp(drag.startY + dy, 0, 1);
-      let align = state.layers[drag.id]?.align ?? "left";
+      let align = elementPosition(state, drag.id)?.align ?? "left";
       const shown: { x?: number; y?: number } = {};
 
       // Snap, so tidy placement is easy without making exact placement
@@ -199,7 +246,7 @@ export function EditableCanvas({
       setGuides(shown);
       onMove(drag.id, x, y, align);
     },
-    [drag, onMove, scale, state.layers, template.width, template.height],
+    [previewing, drag, onMove, scale, state, template.width, template.height],
   );
 
   const endDrag = useCallback(() => {
@@ -215,9 +262,10 @@ export function EditableCanvas({
       if (!target) return;
       const id = target.dataset.layerId!;
       const layer = template.layers.find((l) => l.id === id);
-      if (layer && inlineField(layer)) setEditingId(id);
+      const extra = state.extras.find((x) => x.id === id);
+      if ((layer && inlineField(layer)) || extra?.kind === "text") setEditingId(id);
     },
-    [template.layers],
+    [template.layers, state.extras],
   );
 
   // Reading layout during render measures the DOM as it stood after the
@@ -234,18 +282,38 @@ export function EditableCanvas({
   }>({ selected: null, hovered: null, editing: null });
 
   useLayoutEffect(() => {
+    if (previewing) {
+      setRects({ selected: null, hovered: null, editing: null });
+      return;
+    }
     setRects({
       selected: selectedId ? layerRect(selectedId) : null,
       hovered: hoveredId && hoveredId !== selectedId ? layerRect(hoveredId) : null,
       editing: editingId ? editableRect(editingId) : null,
     });
-  }, [selectedId, hoveredId, editingId, state, boxW, boxH, layerRect, editableRect]);
+  }, [previewing, selectedId, hoveredId, editingId, state, boxW, boxH, layerRect, editableRect]);
 
   const { selected: selectedRect, hovered: hoveredRect, editing: editingRect } = rects;
-  const editingLayer = editingId ? template.layers.find((l) => l.id === editingId) : null;
-  const editingField = editingLayer ? inlineField(editingLayer) : null;
+
+  const editingExtraRaw = editingId ? state.extras.find((e) => e.id === editingId) : null;
+  const editingExtra = editingExtraRaw && editingExtraRaw.kind === "text" ? editingExtraRaw : null;
+  const editingLayer = editingId && !editingExtra ? template.layers.find((l) => l.id === editingId) : null;
+  const editingField: Extract<FieldDef, { type: "text" | "number" }> | null = editingExtra
+    ? EXTRA_TEXT_FIELD
+    : editingLayer
+      ? inlineField(editingLayer)
+      : null;
+
   const selectedLayer = selectedId ? template.layers.find((l) => l.id === selectedId) : null;
-  const selectedEditable = selectedLayer ? inlineField(selectedLayer) : null;
+  const selectedExtra = selectedId ? state.extras.find((e) => e.id === selectedId) : null;
+  const selectedIsText = selectedLayer?.kind === "text" || selectedExtra?.kind === "text";
+  const selectedCanEdit = selectedLayer ? Boolean(inlineField(selectedLayer)) : selectedExtra?.kind === "text";
+  const selectedTextWidth =
+    (selectedLayer ? state.layers[selectedLayer.id]?.textWidth : undefined) ??
+    (selectedExtra && selectedExtra.kind === "text" ? selectedExtra.textWidth : undefined) ??
+    1 - 2 * SAFE_X;
+  const selectedAlign =
+    (selectedId ? elementPosition(state, selectedId)?.align : undefined) ?? "left";
 
   return (
     <div
@@ -281,8 +349,12 @@ export function EditableCanvas({
           template={template}
           state={state}
           frame={frame}
+          fps={template.fps}
           width={template.width}
           height={template.height}
+          // Always hit-testable, even mid-loop: a click during playback needs
+          // to resolve to the exact element it landed on so pausing and
+          // selecting happen in the same gesture (see handlePointerDown).
           interactive
         />
       </div>
@@ -332,34 +404,41 @@ export function EditableCanvas({
 
       {/* Wrap-width handle — text only, since artwork has no lines to reflow.
           Dragging it sets where the copy wraps, like a text box's edge. */}
-      {selectedLayer?.kind === "text" && selectedRect && !editingId && !drag && (
+      {selectedIsText && selectedId && selectedRect && !editingId && !drag && (
         <ResizeHandle
           rect={selectedRect}
-          align={state.layers[selectedLayer.id]?.align ?? "left"}
+          align={selectedAlign}
           boxW={boxW}
-          startWidth={state.layers[selectedLayer.id]?.textWidth ?? 1 - 2 * SAFE_X}
-          onResize={(tw) => onResizeText(selectedLayer.id, tw)}
+          startWidth={selectedTextWidth}
+          onResize={(tw) => onResizeText(selectedId, tw)}
         />
       )}
 
       {/* Floating contextual toolbar, anchored to the selection — the few
           actions that matter for this one element, so the eye never has to
           leave the canvas for the panel. */}
-      {selectedLayer && selectedRect && !editingId && !drag && (
+      {selectedId && (selectedLayer || selectedExtra) && selectedRect && !editingId && !drag && (
         <SelectionToolbar
           rect={selectedRect}
           boxW={boxW}
           boxH={boxH}
-          visible={state.layers[selectedLayer.id]?.visible !== false}
+          visible={selectedLayer ? state.layers[selectedLayer.id]?.visible !== false : true}
           hideAllowed={canHide(state)}
-          canEdit={Boolean(selectedEditable)}
-          onEdit={() => setEditingId(selectedLayer.id)}
-          onToggleVisible={() => onToggleLayer(selectedLayer.id)}
+          canEdit={selectedCanEdit}
+          canDuplicate={
+            Boolean(selectedExtra) ||
+            selectedLayer?.kind === "text" ||
+            Boolean(selectedLayer && selectedLayer.kind === "custom" && selectedLayer.render && stickerComponentId(selectedLayer.render))
+          }
+          onEdit={() => setEditingId(selectedId)}
+          onDuplicate={() => onDuplicate(selectedId)}
+          onToggleVisible={selectedLayer ? () => onToggleLayer(selectedId) : undefined}
+          onDelete={selectedExtra ? () => onDelete(selectedId) : undefined}
         />
       )}
 
       {/* First-run hint: shown once, until the canvas is touched at all. */}
-      {!hintDismissed && !selectedId && !drag && <FirstRunHint onDismiss={dismissHint} />}
+      {!hintDismissed && !selectedId && !drag && !previewing && <FirstRunHint onDismiss={dismissHint} />}
 
       {/* Inline text editing, sized and coloured to match what it replaces */}
       {editingField && editingRect && (
@@ -369,8 +448,8 @@ export function EditableCanvas({
           layerId={editingId!}
           container={containerRef.current}
           field={editingField}
-          value={String(state.values[editingField.key] ?? "")}
-          onChange={(v) => onEditText(editingField.key, v)}
+          value={editingExtra ? editingExtra.text : String(state.values[editingField.key] ?? "")}
+          onChange={(v) => (editingExtra ? onEditExtraText(editingExtra.id, String(v)) : onEditText(editingField.key, v))}
           onDone={() => setEditingId(null)}
         />
       )}
@@ -525,8 +604,11 @@ function SelectionToolbar({
   visible,
   hideAllowed,
   canEdit,
+  canDuplicate,
   onEdit,
+  onDuplicate,
   onToggleVisible,
+  onDelete,
 }: {
   rect: { left: number; top: number; width: number; height: number };
   boxW: number;
@@ -534,11 +616,14 @@ function SelectionToolbar({
   visible: boolean;
   hideAllowed: boolean;
   canEdit: boolean;
+  canDuplicate: boolean;
   onEdit: () => void;
-  onToggleVisible: () => void;
+  onDuplicate: () => void;
+  onToggleVisible?: () => void;
+  onDelete?: () => void;
 }) {
-  const actionCount = canEdit ? 2 : 1;
-  const estWidth = actionCount * 32 + 8;
+  const actionCount = 1 + (canEdit ? 1 : 0) + (canDuplicate ? 1 : 0) + (onToggleVisible ? 1 : 0) + (onDelete ? 1 : 0);
+  const estWidth = actionCount * 30 + 8;
 
   const below = rect.top + rect.height + TOOLBAR_GAP + TOOLBAR_H <= boxH;
   const top = below ? rect.top + rect.height + TOOLBAR_GAP : Math.max(4, rect.top - TOOLBAR_GAP - TOOLBAR_H);
@@ -569,14 +654,39 @@ function SelectionToolbar({
           <PencilIcon width={16} height={16} />
         </ToolbarIcon>
       )}
-      <ToolbarIcon
-        title={visible ? "Hide" : "Show"}
-        onClick={onToggleVisible}
-        disabled={visible && !hideAllowed}
-      >
-        <EyeIcon off={!visible} width={16} height={16} />
-      </ToolbarIcon>
+      {canDuplicate && (
+        <ToolbarIcon title="Duplicate" onClick={onDuplicate}>
+          <DuplicateGlyph />
+        </ToolbarIcon>
+      )}
+      {onToggleVisible && (
+        <ToolbarIcon title={visible ? "Hide" : "Show"} onClick={onToggleVisible} disabled={visible && !hideAllowed}>
+          <EyeIcon off={!visible} width={16} height={16} />
+        </ToolbarIcon>
+      )}
+      {onDelete && (
+        <ToolbarIcon title="Delete" onClick={onDelete}>
+          <TrashGlyph />
+        </ToolbarIcon>
+      )}
     </div>
+  );
+}
+
+function DuplicateGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="5.5" y="5.5" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M10.5 5.5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4.5a2 2 0 0 0 2 2h1.5" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function TrashGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 4.5h10M6.5 4.5V3.2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.3M4.5 4.5l.6 8a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -737,7 +847,12 @@ function InlineEditor({
   }, [container, layerId, scale]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // A number has no concept of a second line, so Enter submits it. Text is
+    // typically more than one line's worth of room (a review, a message) —
+    // Enter there should do what it does in any text box and start a new
+    // line, not end the edit. The textarea grows to fit on its own, since its
+    // size already comes from re-measuring the live (multi-line) render.
+    if (e.key === "Enter" && field.type === "number") {
       e.preventDefault();
       onDone();
     }

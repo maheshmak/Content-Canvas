@@ -1,41 +1,28 @@
-import { useMemo } from "react";
-import type { PostCopy, TemplateDef } from "../templates/schema";
-import { getDefaults } from "../templates/schema";
+import type { TemplateDef } from "../templates/schema";
 import { templates } from "../templates/index";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
-import { LayerCanvas } from "./LayerCanvas";
-import { Scrim, scrimRegion } from "./layout";
-import type { MediaItem } from "./MediaPreview";
 
-/** Thumbnail canvas size — 2 columns in the 240px panel, at the 9:16 ratio. */
-const THUMB_W = 100;
-const THUMB_H = (THUMB_W * 1920) / 1080;
+/** Glance icon size. */
+const THUMB = 24;
 
 /**
- * A live preview of the template applied to this post's actual photo, rather
- * than an emoji and a name. Picking a visual treatment from a glance is a
- * different, faster decision than reading two words like "Pro Tip" — this is
- * the pattern GoDaddy Studio and Canva converge on for the same choice.
+ * A bare icon, rather than a live-rendered crop of the template applied to
+ * the post's photo. At list size a cropped 9:16 composition reads as noise —
+ * the badge, the text, the confetti all blur into an indistinct smear of the
+ * same photo repeated six times. A tinted background tile was a step in the
+ * right direction but still competed with the name for attention; the emoji
+ * alone is legible and quiet enough to sit beside it.
  */
 function TemplateThumb({
   template,
-  media,
-  post,
   isActive,
   onSelect,
 }: {
   template: TemplateDef;
-  media: MediaItem;
-  post: PostCopy | undefined;
   isActive: boolean;
   onSelect: () => void;
 }) {
-  // Rendered at the template's finished frame — the same still every template
-  // row in the picker settles into once its entrance motion has played.
-  const frame = template.durationInFrames - 1;
-  const state = useMemo(() => getDefaults(template, post), [template, post]);
-
   return (
     <button
       type="button"
@@ -44,51 +31,36 @@ function TemplateThumb({
       title={template.name}
       style={{
         display: "flex",
-        flexDirection: "column",
-        gap: "6px",
-        padding: 0,
+        alignItems: "center",
+        gap: "10px",
+        padding: "4px",
         border: "none",
-        background: "none",
+        borderRadius: "6px",
+        background: isActive ? sp.bg : "none",
         cursor: "pointer",
         textAlign: "left",
         fontFamily: FONT,
+        width: "100%",
       }}
     >
       <div
         style={{
-          position: "relative",
-          width: `${THUMB_W}px`,
-          height: `${THUMB_H}px`,
-          borderRadius: "4px",
-          overflow: "hidden",
-          border: `${isActive ? 2 : 1}px solid ${isActive ? sp.borderActive : sp.borderSub}`,
-          background: "#000",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: `${THUMB}px`,
+          height: `${THUMB}px`,
+          flexShrink: 0,
+          fontSize: "16px",
+          lineHeight: 1,
         }}
       >
-        <img
-          src={media.src}
-          alt=""
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: `${template.width}px`,
-            height: `${template.height}px`,
-            transform: `scale(${THUMB_W / template.width})`,
-            transformOrigin: "top left",
-          }}
-        >
-          {template.scrim ? <Scrim region={scrimRegion(state)} /> : null}
-          <LayerCanvas template={template} state={state} frame={frame} width={template.width} height={template.height} />
-        </div>
+        {template.icon}
       </div>
       <span
         style={{
-          fontSize: "12px",
-          lineHeight: "16px",
+          fontSize: "13px",
+          lineHeight: "18px",
           fontWeight: 400,
           color: isActive ? sp.textPrimary : sp.textSecondary,
           overflow: "hidden",
@@ -103,13 +75,9 @@ function TemplateThumb({
 }
 
 export function TemplatePanel({
-  media,
-  post,
   activeTemplateId,
   onSelect,
 }: {
-  media: MediaItem;
-  post: PostCopy | undefined;
   activeTemplateId: string | null;
   onSelect: (template: TemplateDef) => void;
 }) {
@@ -148,18 +116,15 @@ export function TemplatePanel({
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "12px 8px",
-          alignContent: "start",
+          display: "flex",
+          flexDirection: "column",
+          gap: "2px",
         }}
       >
         {templates.map((t) => (
           <TemplateThumb
             key={t.id}
             template={t}
-            media={media}
-            post={post}
             isActive={t.id === activeTemplateId}
             onSelect={() => onSelect(t)}
           />

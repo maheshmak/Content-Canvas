@@ -94,7 +94,15 @@ export function positionToAnchor(pos: Position): Anchor {
 
 /* ------------------------------------------------------------------ motion */
 
+/** Entrance geometry — *what* moves as an element enters. */
 export type MotionType = "fade" | "slide-up" | "pop" | "none";
+
+/**
+ * Spring character — *how* it moves. Material 3 Expressive's motion is physical:
+ * things settle with real spring physics, not eased curves. Named by feel, never
+ * by stiffness/damping numbers.
+ */
+export type SpringFeel = "spatial" | "gentle" | "snappy" | "none";
 
 export interface Motion {
   type: MotionType;
@@ -112,6 +120,20 @@ export interface LayerRenderProps {
   /** Canvas dimensions, for anything that needs to size against them. */
   width: number;
   height: number;
+  /** Which curated rendering variant a sticker draws — e.g. an outline vs a
+   *  filled star. Falls back to the layer's own `defaultVariant`. */
+  variant?: string;
+  /** Manual typography knobs on a sticker's own internal text (a discount
+   *  badge's "%", a tip's number) — only present for stickers whose content
+   *  is text, and only used when `LayerDef.hasInternalText` opts a layer in. */
+  overrides?: TextOverrides;
+}
+
+/** One curated rendering variant a sticker can offer — never a free-form shape
+ *  swap, always scoped to forms that still read as that sticker. */
+export interface VariantOption {
+  id: string;
+  label: string;
 }
 
 /**
@@ -140,6 +162,32 @@ export interface LayerDef {
   style?: (accent: string) => CSSProperties;
   /** Bespoke artwork — a badge, a map pin — for `kind: "custom"`. */
   render?: FC<LayerRenderProps>;
+  /** A sticker's own curated rendering variants — e.g. a star drawn outline,
+   *  filled, or bold. Scoped to that sticker; never the general shape library. */
+  variants?: VariantOption[];
+  /** Which of `variants` this layer renders as until the user picks another. */
+  defaultVariant?: string;
+  /** True when a sticker's content is itself text (a discount's "%", a tip's
+   *  number) — opts it into the same typography controls text elements get. */
+  hasInternalText?: boolean;
+  /** A badge-style text layer's own curated background frames — a pill, a
+   *  sharp tag. Only set on chip-treatment layers, never on paragraph text. */
+  frameVariants?: VariantOption[];
+  /** Which of `frameVariants` this layer renders as until the user picks
+   *  another. */
+  defaultFrameVariant?: string;
+  /** Scale factor for this layer's own render inside a fixed-size swatch
+   *  (e.g. a variant picker). Sticker components have wildly different
+   *  intrinsic footprints — a pin is a fraction of a badge's size — so a
+   *  single scale leaves some swatches looking near-empty. Falls back to a
+   *  scale tuned for a mid-size sticker. */
+  previewScale?: number;
+  /**
+   * Default wrap width for `kind: "text"`, as a fraction of the canvas.
+   * Falls back to the standard safe-area width — set this when a layer lives
+   * in a narrower space (a compact card column) than the full safe area.
+   */
+  textWidth?: number;
   /** Fields this layer owns, surfaced when it is selected. */
   fields: FieldDef[];
   position: Position;
@@ -152,6 +200,10 @@ export interface TemplateDef {
   category: string;
   description: string;
   previewColor: string;
+  /** Representative emoji shown in the Templates list — the photo crop that
+   *  used to sit there was too small to read at a glance; a colour + icon
+   *  tile is legible at any size. */
+  icon: string;
   /** Applies to the whole template: animation style, accent colour. */
   globalFields: FieldDef[];
   layers: LayerDef[];
@@ -176,11 +228,103 @@ export interface LayerState {
   align: Align;
   /** Normalised wrap width for text layers, as a fraction of canvas width. */
   textWidth?: number;
+  /** Which of a sticker layer's own curated variants is showing; falls back
+   *  to the layer's `defaultVariant`. */
+  variant?: string;
+  /** Which of a badge-text layer's own curated frames is showing; falls back
+   *  to the layer's `defaultFrameVariant`. */
+  frameVariant?: string;
+  /** A sticker's own colour, independent of the post's overall accent — the
+   *  overall accent still applies when this is unset. */
+  colorOverride?: string;
+  /** Manual per-property typography overrides — the only text customization
+   *  surface; there is no separate named-preset picker to fall back to. */
+  overrides?: TextOverrides;
+}
+
+/** A shape/sticker/pin's fill: the post's accent, or a neutral. Never a raw hex. */
+export type ColorRole = "accent" | "white" | "dark";
+
+/**
+ * Raw typography controls, layered on top of a text element's base treatment
+ * (font/weight/style/size/colour) — the only text customisation surface.
+ * Only present keys apply; everything else still comes from the treatment.
+ */
+export interface TextOverrides {
+  fontFamily?: string;
+  fontWeight?: number;
+  italic?: boolean;
+  /** Percentage of the treatment's own base size, e.g. 120 = 120%. */
+  sizePct?: number;
+  color?: string;
 }
 
 export type ExtraLayer =
-  | { id: string; kind: "text"; text: string; styleId: string; position: Position; motion: Motion }
-  | { id: string; kind: "badge"; badgeId: string; position: Position; motion: Motion };
+  | {
+      id: string;
+      kind: "text";
+      text: string;
+      /** Fixed at creation — which base treatment (from `textStyles.ts`) this
+       *  text renders on top of; not user-switchable. */
+      styleId: string;
+      textWidth?: number;
+      overrides?: TextOverrides;
+      position: Position;
+      motion: Motion;
+    }
+  | {
+      id: string;
+      kind: "badge";
+      badgeId: string;
+      /** For a sticker with an embedded editable value (a percentage, a number). */
+      value?: number;
+      /** For a sticker whose own words are editable ("OPEN NOW" → "OPEN
+       *  LATE") — falls back to the badge's own default copy when unset. */
+      text?: string;
+      /** This instance's own colour, independent of the post's overall
+       *  accent — without it, selecting an inserted badge had nothing of its
+       *  own to show in the inspector beyond the same picker used to add it. */
+      colorOverride?: string;
+      position: Position;
+      motion: Motion;
+    }
+  | {
+      id: string;
+      kind: "shape";
+      shapeId: string;
+      color: ColorRole;
+      /** Width as a fraction of canvas width; shapes render in a 1:1 box. */
+      size: number;
+      position: Position;
+      motion: Motion;
+    }
+  | {
+      id: string;
+      kind: "sticker";
+      /** Key into `STICKER_REGISTRY` (art.tsx) — which built-in sticker
+       *  component this duplicate renders. A plain string rather than the
+       *  component itself, so this stays JSON-serialisable the way every
+       *  other extra is. */
+      componentId: string;
+      variant?: string;
+      /** This instance's own colour, independent of the post's overall
+       *  accent — same idea as a template layer's `colorOverride`. */
+      colorOverride?: string;
+      /** Typography knobs on the sticker's own internal text, for
+       *  components whose `STICKER_REGISTRY` entry has `hasInternalText`. */
+      overrides?: TextOverrides;
+      /** The sticker's own editable field (a discount %, a star count, a tip
+       *  number) — snapshotted at duplication time, independent of the
+       *  original's value the way duplicated text is independent copy. */
+      value?: number;
+      position: Position;
+      motion: Motion;
+    };
+
+/** A short, collision-proof id for a user-added element. */
+export function newExtraId(): string {
+  return `x-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
 
 /**
  * Everything the editor knows about the current template.
@@ -225,7 +369,7 @@ export function getDefaults(template: TemplateDef, post?: PostCopy): TemplateSta
     layers[layer.id] = {
       visible: true,
       ...layer.position,
-      ...(layer.kind === "text" ? { textWidth: 1 - 2 * SAFE_X } : {}),
+      ...(layer.kind === "text" ? { textWidth: layer.textWidth ?? 1 - 2 * SAFE_X } : {}),
     };
   }
 
@@ -239,7 +383,7 @@ export function tidyPositions(template: TemplateDef, state: TemplateState): Temp
     layers[layer.id] = {
       visible: state.layers[layer.id]?.visible ?? true,
       ...layer.position,
-      textWidth: state.layers[layer.id]?.textWidth,
+      textWidth: state.layers[layer.id]?.textWidth ?? layer.textWidth,
     };
   }
   return { ...state, layers };
@@ -248,4 +392,17 @@ export function tidyPositions(template: TemplateDef, state: TemplateState): Temp
 /** Layers a post cannot lose — the last visible one cannot be hidden. */
 export function canHide(state: TemplateState): boolean {
   return Object.values(state.layers).filter((l) => l.visible).length > 1;
+}
+
+/** The on-canvas position of any element, whether a template layer or an extra. */
+export function elementPosition(state: TemplateState, id: string): Position | null {
+  const layer = state.layers[id];
+  if (layer) return { x: layer.x, y: layer.y, align: layer.align };
+  const extra = state.extras.find((e) => e.id === id);
+  return extra ? extra.position : null;
+}
+
+/** Whether an id refers to a user-added element rather than a template layer. */
+export function isExtra(state: TemplateState, id: string): boolean {
+  return !state.layers[id] && state.extras.some((e) => e.id === id);
 }

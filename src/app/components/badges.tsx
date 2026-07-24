@@ -1,19 +1,33 @@
 import type { FC } from "react";
 
 /**
- * Badges, every one doing a job a small business actually needs.
+ * Stickers — pre-composed, meaningful content, unlike a shape (a pure
+ * geometric form with no fixed meaning). "OPEN NOW" or "30% OFF" is a sticker
+ * because what it says is the point; a circle or a star is a shape because its
+ * silhouette is the point. See `shapes.tsx` for the shape half of that split.
  *
  * No hearts, sparkles or seasonal decoration: this modal edits media the AI
  * already produced, and the only marks worth adding are ones that change what
- * the post asks of a viewer. Trimmed to six, with nothing trade-specific — a
- * hardware shop and a salon can both use all of them.
+ * the post asks of a viewer. Nothing trade-specific — a hardware shop and a
+ * salon can use all of them.
  *
  * Sizes are in 1080-wide canvas units.
  */
 export interface Badge {
   id: string;
   label: string;
-  render: FC<{ accent: string }>;
+  render: FC<{ accent: string; value?: number; text?: string }>;
+  /** Present when the sticker carries one embedded editable number
+   *  (a percentage, a count) — surfaced as a number field once it's selected. */
+  valueField?: { label: string; default: number; min: number; max: number };
+  /** Present when the sticker's own words are editable ("OPEN NOW" →
+   *  "OPEN LATE") — the copy passed here is the default an instance starts
+   *  with, surfaced as a text field once it's selected. */
+  defaultText?: string;
+  /** Swatch preview width, in the badge's own unscaled units — lets the
+   *  picker size each swatch's scale to its actual shape instead of a single
+   *  scale that clips a wide row and leaves a square one swimming in space. */
+  previewScale?: number;
 }
 
 const pill = (accent: string): React.CSSProperties => ({
@@ -33,7 +47,9 @@ function textBadge(id: string, label: string, copy: string): Badge {
   return {
     id,
     label,
-    render: ({ accent }) => <span style={pill(accent)}>{copy}</span>,
+    defaultText: copy,
+    previewScale: 0.15,
+    render: ({ accent, text }) => <span style={pill(accent)}>{text ?? copy}</span>,
   };
 }
 
@@ -46,6 +62,7 @@ export const BADGES: Badge[] = [
   {
     id: "five-star",
     label: "Five stars",
+    previewScale: 0.12,
     render: ({ accent }) => (
       <span style={{ display: "inline-flex", gap: "10px" }}>
         {[0, 1, 2, 3, 4].map((i) => (
@@ -54,6 +71,49 @@ export const BADGES: Badge[] = [
           </svg>
         ))}
       </span>
+    ),
+  },
+  {
+    id: "discount-circle",
+    label: "Discount",
+    valueField: { label: "Discount", default: 30, min: 5, max: 90 },
+    previewScale: 0.09,
+    render: ({ accent, value = 30 }) => (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "320px",
+          height: "320px",
+          borderRadius: "50%",
+          background: accent,
+          boxShadow: "0 16px 60px rgba(0,0,0,0.4)",
+        }}
+      >
+        <div style={{ fontSize: "124px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>{value}%</div>
+        <div style={{ fontSize: "44px", fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "6px" }}>OFF</div>
+      </div>
+    ),
+  },
+  {
+    id: "tip-number",
+    label: "Number",
+    valueField: { label: "Number", default: 1, min: 1, max: 20 },
+    previewScale: 0.13,
+    render: ({ accent, value = 1 }) => (
+      <div
+        style={{
+          fontSize: "180px",
+          fontWeight: 900,
+          lineHeight: 1,
+          color: accent,
+          textShadow: "0 1px 3px rgba(0,0,0,0.6), 0 4px 18px rgba(0,0,0,0.45)",
+        }}
+      >
+        {value}
+      </div>
     ),
   },
 ];

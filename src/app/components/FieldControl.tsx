@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { FieldDef } from "../templates/schema";
 import { sp, radius, type, FONT } from "../theme";
-import { normalizeAnimationStyle } from "./AnimationPlayer";
+import { normalizeFeel } from "./AnimationPlayer";
 import { Field, TextInput, TextArea, Select, ColorInput, PillSelect } from "./ds";
 
 /**
@@ -31,7 +31,7 @@ export function FieldControl({ field, value, onChange, hideLabel = false }: Prop
 
   if (field.type === "select") {
     const raw = String(value ?? field.default);
-    const current = field.key === "animationStyle" ? normalizeAnimationStyle(raw) : raw;
+    const current = field.key === "animationStyle" ? normalizeFeel(raw) : raw;
     if (field.variant === "pills") {
       return wrap(
         <PillSelect

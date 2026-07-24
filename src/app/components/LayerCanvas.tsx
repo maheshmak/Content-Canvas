@@ -2,18 +2,36 @@ import type { CSSProperties } from "react";
 import type {
   Align,
   ExtraLayer,
-  FieldValues,
   LayerDef,
   Motion,
   Position,
+  SpringFeel,
   TemplateDef,
   TemplateState,
 } from "../templates/schema";
 import { SAFE_X } from "../templates/schema";
-import { createInterpolate, normalizeAnimationStyle } from "./AnimationPlayer";
-import type { Interpolate } from "./AnimationPlayer";
+import type { VariantOption } from "../templates/schema";
+import { enterProgress, normalizeFeel } from "./AnimationPlayer";
 import { TEXT_STYLES } from "./textStyles";
 import { BADGES } from "./badges";
+import { STICKER_REGISTRY } from "../templates/art";
+import { ShapeGlyph, resolveShapeColor } from "./shapes";
+
+/** A badge-style text layer's own curated backgrounds — never a clip-path
+ *  shaped for a square sticker, since these boxes are short and wide. */
+export const BADGE_TEXT_FRAME_VARIANTS: VariantOption[] = [
+  { id: "pill", label: "Pill" },
+  { id: "rounded", label: "Rounded" },
+  { id: "sharp", label: "Sharp" },
+  { id: "tag", label: "Tag" },
+];
+
+const BADGE_TEXT_FRAME_CSS: Record<string, CSSProperties> = {
+  pill: { borderRadius: "999px" },
+  rounded: { borderRadius: "14px" },
+  sharp: { borderRadius: "0px" },
+  tag: { borderRadius: "4px", clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 4% 100%, 0% 50%)" },
+};
 
 /**
  * Draws a template's layers from data.
@@ -32,40 +50,30 @@ const TRANSLATE: Record<Align, string> = {
   right: "translateX(-100%)",
 };
 
-export function motionStyle(motion: Motion, frame: number, interpolate: Interpolate, values: FieldValues): CSSProperties {
-  if (motion.type === "none") return {};
-  const { delay } = motion;
-  const style = normalizeAnimationStyle(values.animationStyle as string | undefined);
+function clamp01(v: number) {
+  return Math.min(1, Math.max(0, v));
+}
 
-  switch (style) {
-    case "none":
-      return { opacity: 1 };
-    case "fade":
-      return { opacity: interpolate(frame, [delay, delay + 30], [0, 1]) };
-    case "pop":
-      return {
-        opacity: interpolate(frame, [delay, delay + 12], [0, 1]),
-        transform: `scale(${interpolate(frame, [delay, delay + 24], [0.2, 1])})`,
-      };
-    case "bounce":
-      // Overshoot lives in the easing, so a plain rise reads as a bounce that
-      // settles rather than a slide that stops dead.
-      return {
-        opacity: interpolate(frame, [delay, delay + 10], [0, 1]),
-        transform: `translateY(${interpolate(frame, [delay, delay + 34], [120, 0])}px)`,
-      };
-    case "zoom":
-      return {
-        opacity: interpolate(frame, [delay, delay + 14], [0, 1]),
-        transform: `scale(${interpolate(frame, [delay, delay + 26], [1.4, 1])})`,
-      };
-    case "slide-up":
-    default:
-      return {
-        opacity: interpolate(frame, [delay, delay + 16], [0, 1]),
-        transform: `translateY(${interpolate(frame, [delay, delay + 28], [96, 0])}px)`,
-      };
-  }
+/**
+ * The entrance for one element: the geometry decides *what* moves, the post's
+ * single spring feel decides *how* — motion is common architecture across the
+ * whole post, not a per-element choice. Opacity rises on a short linear ramp
+ * so the element is visible while the spring settles its position — the
+ * overshoot then reads as a physical settle rather than a stop.
+ */
+export function motionStyle(motion: Motion, frame: number, fps: number, postFeel: SpringFeel): CSSProperties {
+  // "None" feel → everything is static from the first frame, no entrance at all.
+  if (postFeel === "none") return {};
+  if (motion.type === "none") return {};
+  const fadeFrames = motion.type === "fade" ? 18 : 10;
+  const opacity = clamp01((frame - motion.delay) / fadeFrames);
+  if (motion.type === "fade") return { opacity };
+
+  const p = enterProgress(frame, fps, postFeel, motion.delay);
+  if (motion.type === "pop") return { opacity, transform: `scale(${p})` };
+  // slide-up: an overshooting spring lets p exceed 1, so the element rises just
+  // past its mark and settles back — the M3E bounce.
+  return { opacity, transform: `translateY(${(1 - p) * 96}px)` };
 }
 
 /** Wraps one element at its position, with its entrance applied. */
@@ -74,29 +82,42 @@ function Positioned({
   position,
   motion,
   frame,
-  interpolate,
+  fps,
+  postFeel,
   width,
   height,
   interactive,
-  values,
   maxWidthFrac,
+  fixedWidth,
   children,
 }: {
   id: string;
   position: Position;
   motion: Motion;
   frame: number;
-  interpolate: Interpolate;
+  fps: number;
+  postFeel: SpringFeel;
   width: number;
   height: number;
   interactive?: boolean;
-  values: FieldValues;
   /** Wrap width as a fraction of the canvas; falls back to the safe area. */
   maxWidthFrac?: number;
+  /**
+   * Renders as a real box at that width rather than shrinking to the content.
+   *
+   * A shrink-to-fit box hugs whatever text happens to be there, so on short
+   * copy the selection outline and the wrap handle end up hard against the
+   * letters — nowhere near where a longer line would actually wrap. A fixed
+   * width makes the box *be* the column, so hover, selection and the handle
+   * all land on the real wrap boundary, the way a text box works in Figma or
+   * Canva. Alignment is unaffected: `textAlign` still does the positioning
+   * within the box, so left/centre/right output the same pixels either way.
+   */
+  fixedWidth?: boolean;
   children: React.ReactNode;
 }) {
-  const inner = motionStyle(motion, frame, interpolate, values);
-  const maxWidth = (maxWidthFrac ?? 1 - 2 * SAFE_X) * width;
+  const inner = motionStyle(motion, frame, fps, postFeel);
+  const boxWidth = (maxWidthFrac ?? 1 - 2 * SAFE_X) * width;
   // The entrance transform lives on an inner element so it never fights the
   // alignment transform that positions the layer.
   return (
@@ -111,7 +132,7 @@ function Positioned({
         top: `${position.y * height}px`,
         transform: TRANSLATE[position.align],
         textAlign: position.align,
-        maxWidth: `${maxWidth}px`,
+        ...(fixedWidth ? { width: `${boxWidth}px` } : { maxWidth: `${boxWidth}px` }),
         pointerEvents: interactive ? "auto" : "none",
         cursor: interactive ? "grab" : undefined,
       }}
@@ -125,6 +146,7 @@ export function LayerCanvas({
   template,
   state,
   frame,
+  fps,
   width,
   height,
   interactive,
@@ -132,12 +154,13 @@ export function LayerCanvas({
   template: TemplateDef;
   state: TemplateState;
   frame: number;
+  fps: number;
   width: number;
   height: number;
   /** Edit mode: layers accept pointer events so they can be selected/dragged. */
   interactive?: boolean;
 }) {
-  const interpolate = createInterpolate(state.values.animationStyle as string | undefined);
+  const postFeel = normalizeFeel(state.values.animationStyle as string | undefined);
   const accent = String(state.values.accentColor ?? template.previewColor);
   const renderProps = { values: state.values, accent, frame, width, height };
 
@@ -148,10 +171,19 @@ export function LayerCanvas({
       {template.ambient ? <template.ambient {...renderProps} /> : null}
 
       {visible.map((layer) => {
-        const pos = state.layers[layer.id] ?? layer.position;
-        // Text layers carry an adjustable wrap width; artwork keeps the safe
-        // default so badges and pins are never squeezed.
-        const maxWidthFrac = layer.kind === "text" ? state.layers[layer.id]?.textWidth : undefined;
+        const ls = state.layers[layer.id];
+        const pos = ls ?? layer.position;
+        // Paragraph text carries an adjustable wrap width and needs a real
+        // box at that width; a badge-style chip (has its own frame variants)
+        // and artwork both shrink to their own content instead, so their hit
+        // box always matches what's actually drawn — not the full safe area a
+        // wrapping paragraph would otherwise default to.
+        const isChip = Boolean(layer.frameVariants);
+        const maxWidthFrac = layer.kind === "text" && !isChip ? ls?.textWidth : undefined;
+        // A sticker's own colour, if set, stands in for the post accent only
+        // for that one element — text keeps its separate colour override.
+        const layerAccent = layer.kind === "custom" && ls?.colorOverride ? ls.colorOverride : accent;
+        const layerRenderProps = layerAccent === accent ? renderProps : { ...renderProps, accent: layerAccent };
         return (
           <Positioned
             key={layer.id}
@@ -160,33 +192,46 @@ export function LayerCanvas({
             position={pos}
             motion={layer.motion}
             frame={frame}
-            interpolate={interpolate}
+            fps={fps}
+            postFeel={postFeel}
             width={width}
             height={height}
-            values={state.values}
             maxWidthFrac={maxWidthFrac}
+            fixedWidth={layer.kind === "text" && !isChip}
           >
-            <LayerBody layer={layer} accent={accent} renderProps={renderProps} />
+            <LayerBody
+              layer={layer}
+              accent={layerAccent}
+              renderProps={layerRenderProps}
+              overrides={ls?.overrides}
+              variant={ls?.variant ?? layer.defaultVariant}
+              frameVariant={ls?.frameVariant ?? layer.defaultFrameVariant}
+            />
           </Positioned>
         );
       })}
 
-      {state.extras.map((extra) => (
-        <Positioned
-          key={extra.id}
-          id={extra.id}
-          interactive={interactive}
-          position={extra.position}
-          motion={extra.motion}
-          frame={frame}
-          interpolate={interpolate}
-          width={width}
-          height={height}
-          values={state.values}
-        >
-          <ExtraBody extra={extra} accent={accent} />
-        </Positioned>
-      ))}
+      {state.extras.map((extra) => {
+        const progress = enterProgress(frame, fps, postFeel, extra.motion.delay);
+        return (
+          <Positioned
+            key={extra.id}
+            id={extra.id}
+            interactive={interactive}
+            position={extra.position}
+            motion={extra.motion}
+            frame={frame}
+            fps={fps}
+            postFeel={postFeel}
+            width={width}
+            height={height}
+            maxWidthFrac={extra.kind === "text" ? extra.textWidth : undefined}
+            fixedWidth={extra.kind === "text"}
+          >
+            <ExtraBody extra={extra} accent={accent} progress={progress} canvasWidth={width} canvasHeight={height} frame={frame} />
+          </Positioned>
+        );
+      })}
     </>
   );
 }
@@ -195,24 +240,97 @@ function LayerBody({
   layer,
   accent,
   renderProps,
+  overrides,
+  variant,
+  frameVariant,
 }: {
   layer: LayerDef;
   accent: string;
   renderProps: Parameters<NonNullable<LayerDef["render"]>>[0];
+  /** Raw typography knobs on top of the layer's authored style, or — for a
+   *  sticker with `hasInternalText` — on its own internal text. */
+  overrides?: import("../templates/schema").TextOverrides;
+  /** Which of the sticker's own curated variants to draw. */
+  variant?: string;
+  /** Which of a badge-text layer's own curated frames to draw. */
+  frameVariant?: string;
 }) {
   if (layer.kind === "custom" && layer.render) {
-    return <layer.render {...renderProps} />;
+    return <layer.render {...renderProps} variant={variant} overrides={layer.hasInternalText ? overrides : undefined} />;
   }
   const text = String(renderProps.values[layer.textKey ?? ""] ?? "");
   if (!text) return null;
-  return <div style={layer.style?.(accent)}>{text}</div>;
+  const style = applyOverrides(layer.style?.(accent) ?? {}, overrides);
+  const frameCss = layer.frameVariants ? BADGE_TEXT_FRAME_CSS[frameVariant ?? ""] : undefined;
+  return <div style={frameCss ? { ...style, ...frameCss } : style}>{text}</div>;
 }
 
-function ExtraBody({ extra, accent }: { extra: ExtraLayer; accent: string }) {
+/** Layers the typography overrides on top of a resolved base style — only
+ *  present keys apply, everything else still comes from the base treatment.
+ *  Size is a percentage of whatever base size the treatment set, so it scales
+ *  the treatment rather than replacing it with an absolute number. */
+function applyOverrides(style: CSSProperties, ov?: import("../templates/schema").TextOverrides): CSSProperties {
+  if (!ov) return style;
+  const next: CSSProperties = { ...style };
+  if (ov.fontFamily) next.fontFamily = ov.fontFamily;
+  if (ov.fontWeight) next.fontWeight = ov.fontWeight;
+  if (ov.italic) next.fontStyle = "italic";
+  if (ov.color) next.color = ov.color;
+  if (ov.sizePct) {
+    const base = parseFloat(String(style.fontSize ?? "")) || 0;
+    if (base) next.fontSize = `${(base * ov.sizePct) / 100}px`;
+  }
+  return next;
+}
+
+function ExtraBody({
+  extra,
+  accent,
+  progress,
+  canvasWidth,
+  canvasHeight,
+  frame,
+}: {
+  extra: ExtraLayer;
+  accent: string;
+  /** Entrance progress 0..1, for a `kind:"shape"` element's morph-in. */
+  progress: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  /** For a duplicated built-in sticker — these still run their own frame-
+   *  driven micro-animation (a star's pop-in stagger, a badge's pulse) the
+   *  same as the original layer does. */
+  frame: number;
+}) {
   if (extra.kind === "text") {
     const style = TEXT_STYLES.find((s) => s.id === extra.styleId) ?? TEXT_STYLES[0];
-    return <div style={style.style(accent)}>{extra.text}</div>;
+    return <div style={applyOverrides(style.style(accent), extra.overrides)}>{extra.text}</div>;
+  }
+  if (extra.kind === "shape") {
+    const px = Math.max(24, extra.size * canvasWidth);
+    return (
+      <div style={{ width: `${px}px`, height: `${px}px` }}>
+        <ShapeGlyph shapeId={extra.shapeId} color={resolveShapeColor(extra.color, accent)} progress={progress} />
+      </div>
+    );
+  }
+  if (extra.kind === "sticker") {
+    const reg = STICKER_REGISTRY[extra.componentId];
+    if (!reg) return null;
+    const stickerAccent = extra.colorOverride ?? accent;
+    const values = reg.valuesKey ? { [reg.valuesKey]: extra.value ?? reg.valueField?.default ?? 0 } : {};
+    return (
+      <reg.render
+        values={values}
+        accent={stickerAccent}
+        frame={frame}
+        width={canvasWidth}
+        height={canvasHeight}
+        variant={extra.variant ?? reg.defaultVariant}
+        overrides={reg.hasInternalText ? extra.overrides : undefined}
+      />
+    );
   }
   const badge = BADGES.find((b) => b.id === extra.badgeId) ?? BADGES[0];
-  return <badge.render accent={accent} />;
+  return <badge.render accent={extra.colorOverride ?? accent} value={extra.value} text={extra.text} />;
 }

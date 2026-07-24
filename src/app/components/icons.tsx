@@ -39,6 +39,17 @@ export function TemplatesIcon({ width = 32, height = 32, ...props }: IconProps) 
   );
 }
 
+/** Overlapping circle + square — stands in for "shapes/stickers" until a
+ *  matching glyph ships from the design file. */
+export function ShapesIcon({ width = 32, height = 32, ...props }: IconProps) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 32 32" fill="none" aria-hidden {...props}>
+      <rect x="9" y="9" width="12" height="12" rx="2" fill="currentColor" opacity="0.55" />
+      <circle cx="19.5" cy="19.5" r="6.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 /** BaseSecurityRegenerate */
 export function ResetIcon({ width = 32, height = 32, ...props }: IconProps) {
   return (

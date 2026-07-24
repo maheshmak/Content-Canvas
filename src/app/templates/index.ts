@@ -1,7 +1,14 @@
 import type { CSSProperties } from "react";
 import type { FieldDef, TemplateDef } from "./schema";
-import { DEFAULT_ANIMATION_STYLE, EASING_OPTIONS } from "../components/AnimationPlayer";
-import { RatingRow, DiscountBadge, MapPin, TipBadge, Confetti } from "./art";
+import { DEFAULT_FEEL, FEEL_OPTIONS } from "../components/AnimationPlayer";
+import { BADGE_TEXT_FRAME_VARIANTS } from "../components/LayerCanvas";
+import {
+  RatingRow, RATING_VARIANTS,
+  DiscountBadge, BADGE_FRAME_VARIANTS,
+  MapPin, PIN_VARIANTS,
+  TipNumeral, NUMBER_VARIANTS,
+  Confetti,
+} from "./art";
 
 /**
  * Templates are visual treatments, not content.
@@ -15,15 +22,28 @@ import { RatingRow, DiscountBadge, MapPin, TipBadge, Confetti } from "./art";
  * Every layer is independently positioned, which is what makes the canvas
  * directly editable: an element can be selected, dragged and typed into because
  * it is described rather than hardcoded.
+ *
+ * Every template puts its type directly on the photo. Real reference apps
+ * (Veed, CapCut, Vimeo) never float a drop-shadowed card or banner over the
+ * media — either bold type sits straight on it with just enough shadow to
+ * read, or a badge gets a small flat chip sized to its own text. Difference
+ * between templates comes from position and hierarchy, not added surfaces.
  */
 
 /* Shared text treatments, in 1080-wide canvas units. */
+// `white-space: pre-wrap` on every style below: `normal` (the CSS default)
+// collapses a typed line break to a space, so pressing Enter while editing
+// would look like it worked and then silently vanish from the result.
+// `pre-wrap` keeps a manual break as a break while still wrapping long lines
+// at the safe-area edge exactly as before.
+
 const headline = (): CSSProperties => ({
   fontSize: "96px",
   fontWeight: 900,
   color: "#fff",
   lineHeight: 1.1,
   textShadow: "0 2px 12px rgba(0,0,0,0.55)",
+  whiteSpace: "pre-wrap",
   margin: 0,
 });
 
@@ -33,6 +53,7 @@ const support = (): CSSProperties => ({
   color: "rgba(255,255,255,0.85)",
   lineHeight: 1.4,
   textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+  whiteSpace: "pre-wrap",
   margin: 0,
 });
 
@@ -46,6 +67,7 @@ const chip = (accent: string): CSSProperties => ({
   background: accent,
   padding: "12px 36px",
   borderRadius: "60px",
+  whiteSpace: "pre-wrap",
   margin: 0,
 });
 
@@ -56,6 +78,7 @@ const pricePill = (accent: string): CSSProperties => ({
   color: accent,
   lineHeight: 1,
   textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+  whiteSpace: "pre-wrap",
   margin: 0,
 });
 
@@ -63,15 +86,19 @@ const accentLine = (accent: string): CSSProperties => ({
   fontSize: "46px",
   fontWeight: 600,
   color: accent,
+  // Coloured (not white) foreground needs its own legibility net wherever it
+  // lands on the photo — two layers, a tight dark core plus a soft spread.
+  textShadow: "0 1px 3px rgba(0,0,0,0.6), 0 2px 14px rgba(0,0,0,0.45)",
+  whiteSpace: "pre-wrap",
   margin: 0,
 });
 
 const motionStyleField: FieldDef = {
   key: "animationStyle",
   type: "select",
-  label: "Animation style",
-  default: DEFAULT_ANIMATION_STYLE,
-  options: EASING_OPTIONS,
+  label: "Motion",
+  default: DEFAULT_FEEL,
+  options: FEEL_OPTIONS,
   variant: "pills",
 };
 
@@ -89,6 +116,7 @@ export const templates: TemplateDef[] = [
     category: "Reviews",
     description: "A customer review, with the rating up front",
     previewColor: "#F5A623",
+    icon: "⭐",
     durationInFrames: 90,
     fps: 30,
     width: 1080,
@@ -102,8 +130,10 @@ export const templates: TemplateDef[] = [
         icon: "⭐",
         kind: "custom",
         render: RatingRow,
+        variants: RATING_VARIANTS,
+        defaultVariant: "filled",
         fields: [{ key: "rating", type: "number", label: "Stars", default: 5, min: 1, max: 5 }],
-        position: { x: 0.075, y: 0.6, align: "left" },
+        position: { x: 0.5, y: 0.62, align: "center" },
         motion: { type: "fade", delay: 5 },
       },
       {
@@ -117,7 +147,9 @@ export const templates: TemplateDef[] = [
         fields: [
           { key: "reviewText", type: "text", label: "Review", default: "Best haircut in town!", maxLength: 80 },
         ],
-        position: { x: 0.075, y: 0.72, align: "left" },
+        // Centred, not the bottom-left stack every other template uses — the
+        // one thing that makes a review actually read as a quote.
+        position: { x: 0.5, y: 0.7, align: "center" },
         motion: { type: "slide-up", delay: 28 },
       },
       {
@@ -130,7 +162,7 @@ export const templates: TemplateDef[] = [
         fields: [
           { key: "customerName", type: "text", label: "Customer name", default: "Happy Customer", maxLength: 30 },
         ],
-        position: { x: 0.075, y: 0.88, align: "left" },
+        position: { x: 0.5, y: 0.86, align: "center" },
         motion: { type: "fade", delay: 50 },
       },
     ],
@@ -142,6 +174,7 @@ export const templates: TemplateDef[] = [
     category: "Offers",
     description: "A discount badge over the media",
     previewColor: "#FF6B35",
+    icon: "🏷️",
     durationInFrames: 90,
     fps: 30,
     width: 1080,
@@ -156,6 +189,8 @@ export const templates: TemplateDef[] = [
         kind: "text",
         textKey: "label",
         style: chip,
+        frameVariants: BADGE_TEXT_FRAME_VARIANTS,
+        defaultFrameVariant: "pill",
         fields: [{ key: "label", type: "text", label: "Label", default: "Flash Sale", maxLength: 20 }],
         position: { x: 0.5, y: 0.08, align: "center" },
         motion: { type: "fade", delay: 0 },
@@ -166,6 +201,10 @@ export const templates: TemplateDef[] = [
         icon: "💯",
         kind: "custom",
         render: DiscountBadge,
+        variants: BADGE_FRAME_VARIANTS,
+        defaultVariant: "circle",
+        previewScale: 0.1,
+        hasInternalText: true,
         fields: [{ key: "discount", type: "number", label: "Discount %", default: 30, min: 5, max: 90 }],
         position: { x: 0.5, y: 0.42, align: "center" },
         motion: { type: "pop", delay: 5 },
@@ -205,6 +244,7 @@ export const templates: TemplateDef[] = [
     category: "Announcements",
     description: "A celebratory announcement with confetti",
     previewColor: "#8B5CF6",
+    icon: "🎉",
     durationInFrames: 90,
     fps: 30,
     width: 1080,
@@ -220,6 +260,8 @@ export const templates: TemplateDef[] = [
         kind: "text",
         textKey: "badge",
         style: chip,
+        frameVariants: BADGE_TEXT_FRAME_VARIANTS,
+        defaultFrameVariant: "pill",
         fields: [{ key: "badge", type: "text", label: "Badge", default: "Now Open", maxLength: 20 }],
         position: { x: 0.5, y: 0.07, align: "center" },
         motion: { type: "pop", delay: 12 },
@@ -235,8 +277,10 @@ export const templates: TemplateDef[] = [
         fields: [
           { key: "businessName", type: "text", label: "Business name", default: "The Corner Cafe", maxLength: 30 },
         ],
-        position: { x: 0.075, y: 0.72, align: "left" },
-        motion: { type: "pop", delay: 12 },
+        // Dead centre, under the badge — the confetti and the centring are
+        // what carry this template's identity, not a graphic device.
+        position: { x: 0.5, y: 0.5, align: "center" },
+        motion: { type: "pop", delay: 20 },
       },
       {
         id: "message",
@@ -249,8 +293,8 @@ export const templates: TemplateDef[] = [
         fields: [
           { key: "message", type: "text", label: "Message", default: "Join us for our grand opening!", maxLength: 50 },
         ],
-        position: { x: 0.075, y: 0.83, align: "left" },
-        motion: { type: "fade", delay: 36 },
+        position: { x: 0.5, y: 0.605, align: "center" },
+        motion: { type: "fade", delay: 40 },
       },
       {
         id: "date",
@@ -259,8 +303,10 @@ export const templates: TemplateDef[] = [
         kind: "text",
         textKey: "date",
         style: chip,
+        frameVariants: BADGE_TEXT_FRAME_VARIANTS,
+        defaultFrameVariant: "pill",
         fields: [{ key: "date", type: "text", label: "Date", default: "July 28, 2025", maxLength: 30 }],
-        position: { x: 0.075, y: 0.92, align: "left" },
+        position: { x: 0.5, y: 0.69, align: "center" },
         motion: { type: "fade", delay: 54 },
       },
     ],
@@ -272,6 +318,7 @@ export const templates: TemplateDef[] = [
     category: "Services & Prices",
     description: "One service, its price up front",
     previewColor: "#0EA5E9",
+    icon: "🌟",
     durationInFrames: 90,
     fps: 30,
     width: 1080,
@@ -286,9 +333,31 @@ export const templates: TemplateDef[] = [
         kind: "text",
         textKey: "label",
         style: chip,
+        frameVariants: BADGE_TEXT_FRAME_VARIANTS,
+        defaultFrameVariant: "pill",
         fields: [{ key: "label", type: "text", label: "Label", default: "Featured", maxLength: 20 }],
         position: { x: 0.075, y: 0.07, align: "left" },
         motion: { type: "fade", delay: 8 },
+      },
+      {
+        id: "price",
+        label: "Price",
+        icon: "💷",
+        kind: "text",
+        textKey: "price",
+        style: pricePill,
+        // A short corner tag, not a wrapping paragraph — without its own
+        // width it defaulted to the same near-full-canvas box "label" gets,
+        // which put both layers' hit areas on top of each other even though
+        // they render in opposite corners.
+        textWidth: 0.3,
+        // A price tag in the opposite corner from the label, rather than
+        // buried in the bottom stack — the number is this template's point.
+        position: { x: 0.925, y: 0.065, align: "right" },
+        fields: [
+          { key: "price", type: "text", label: "Price", default: "$35", maxLength: 12, showCount: false },
+        ],
+        motion: { type: "pop", delay: 12 },
       },
       {
         id: "service",
@@ -301,21 +370,8 @@ export const templates: TemplateDef[] = [
         fields: [
           { key: "serviceName", type: "text", label: "Service name", default: "Classic Haircut", maxLength: 30 },
         ],
-        position: { x: 0.075, y: 0.7, align: "left" },
-        motion: { type: "slide-up", delay: 18 },
-      },
-      {
-        id: "price",
-        label: "Price",
-        icon: "💷",
-        kind: "text",
-        textKey: "price",
-        style: pricePill,
-        fields: [
-          { key: "price", type: "text", label: "Price", default: "$35", maxLength: 12, showCount: false },
-        ],
-        position: { x: 0.075, y: 0.81, align: "left" },
-        motion: { type: "pop", delay: 38 },
+        position: { x: 0.075, y: 0.78, align: "left" },
+        motion: { type: "slide-up", delay: 30 },
       },
       {
         id: "description",
@@ -334,8 +390,8 @@ export const templates: TemplateDef[] = [
             maxLength: 60,
           },
         ],
-        position: { x: 0.075, y: 0.92, align: "left" },
-        motion: { type: "fade", delay: 56 },
+        position: { x: 0.075, y: 0.9, align: "left" },
+        motion: { type: "fade", delay: 50 },
       },
     ],
   },
@@ -346,6 +402,7 @@ export const templates: TemplateDef[] = [
     category: "Tips",
     description: "A numbered tip with a follow prompt",
     previewColor: "#10B981",
+    icon: "💡",
     durationInFrames: 90,
     fps: 30,
     width: 1080,
@@ -354,14 +411,18 @@ export const templates: TemplateDef[] = [
     globalFields: [motionStyleField, accentField("#10B981")],
     layers: [
       {
-        id: "badge",
-        label: "Tip number",
+        id: "numeral",
+        label: "Number",
         icon: "🔢",
         kind: "custom",
-        render: TipBadge,
+        render: TipNumeral,
+        variants: NUMBER_VARIANTS,
+        defaultVariant: "plain",
+        previewScale: 0.3,
+        hasInternalText: true,
         fields: [{ key: "tipNumber", type: "number", label: "Tip number", default: 1, min: 1, max: 99 }],
-        position: { x: 0.075, y: 0.08, align: "left" },
-        motion: { type: "pop", delay: 0 },
+        position: { x: 0.92, y: 0.03, align: "right" },
+        motion: { type: "fade", delay: 0 },
       },
       {
         id: "tip",
@@ -380,7 +441,7 @@ export const templates: TemplateDef[] = [
             maxLength: 80,
           },
         ],
-        position: { x: 0.075, y: 0.74, align: "left" },
+        position: { x: 0.5, y: 0.46, align: "center" },
         motion: { type: "slide-up", delay: 26 },
       },
       {
@@ -394,7 +455,9 @@ export const templates: TemplateDef[] = [
         fields: [
           { key: "ctaText", type: "text", label: "Call to action", default: "Follow for more tips!", maxLength: 40 },
         ],
-        position: { x: 0.075, y: 0.9, align: "left" },
+        // Close under the tip, inside the scrim's actual dark band rather
+        // than out past where it's already faded to transparent.
+        position: { x: 0.5, y: 0.64, align: "center" },
         motion: { type: "fade", delay: 52 },
       },
     ],
@@ -406,6 +469,7 @@ export const templates: TemplateDef[] = [
     category: "Hours & Location",
     description: "Where you are and when you're open",
     previewColor: "#F59E0B",
+    icon: "📍",
     durationInFrames: 90,
     fps: 30,
     width: 1080,
@@ -419,8 +483,11 @@ export const templates: TemplateDef[] = [
         icon: "📍",
         kind: "custom",
         render: MapPin,
+        variants: PIN_VARIANTS,
+        defaultVariant: "classic",
+        previewScale: 0.5,
         fields: [],
-        position: { x: 0.5, y: 0.1, align: "center" },
+        position: { x: 0.5, y: 0.6, align: "center" },
         motion: { type: "slide-up", delay: 0 },
       },
       {
@@ -434,8 +501,8 @@ export const templates: TemplateDef[] = [
         fields: [
           { key: "address", type: "text", label: "Address", default: "123 Main Street, Downtown", maxLength: 50 },
         ],
-        position: { x: 0.075, y: 0.72, align: "left" },
-        motion: { type: "slide-up", delay: 22 },
+        position: { x: 0.075, y: 0.7, align: "left" },
+        motion: { type: "slide-up", delay: 20 },
       },
       {
         id: "phone",
@@ -444,10 +511,13 @@ export const templates: TemplateDef[] = [
         kind: "text",
         textKey: "phone",
         style: accentLine,
+        // Left column of a two-column row — the split itself is what makes
+        // this read as an info line rather than another stacked caption.
+        textWidth: 0.4,
         fields: [
           { key: "phone", type: "text", label: "Phone", default: "(555) 123-4567", maxLength: 20, showCount: false },
         ],
-        position: { x: 0.075, y: 0.84, align: "left" },
+        position: { x: 0.075, y: 0.865, align: "left" },
         motion: { type: "fade", delay: 34 },
       },
       {
@@ -457,11 +527,13 @@ export const templates: TemplateDef[] = [
         kind: "text",
         textKey: "hours",
         style: support,
+        // Right column of the same row.
+        textWidth: 0.4,
         fields: [
           { key: "hours", type: "text", label: "Hours", default: "Mon–Sat  9am – 7pm", maxLength: 40 },
         ],
-        position: { x: 0.075, y: 0.91, align: "left" },
-        motion: { type: "fade", delay: 50 },
+        position: { x: 0.52, y: 0.865, align: "left" },
+        motion: { type: "fade", delay: 42 },
       },
     ],
   },

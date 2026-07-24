@@ -1,10 +1,11 @@
 import { sp } from "../theme";
-import { TextIcon, TemplatesIcon } from "./icons";
+import { TextIcon, ShapesIcon, TemplatesIcon } from "./icons";
 
-export type EditorTab = "text" | "templates";
+export type EditorTab = "text" | "shape" | "templates";
 
 const TABS: { id: EditorTab; label: string; Icon: typeof TextIcon }[] = [
   { id: "text", label: "Text", Icon: TextIcon },
+  { id: "shape", label: "Shape", Icon: ShapesIcon },
   { id: "templates", label: "Templates", Icon: TemplatesIcon },
 ];
 
