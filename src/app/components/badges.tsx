@@ -16,7 +16,7 @@ import type { FC } from "react";
 export interface Badge {
   id: string;
   label: string;
-  render: FC<{ accent: string; value?: number; text?: string }>;
+  render: FC<{ accent: string; textColor?: string; value?: number; text?: string }>;
   /** Present when the sticker carries one embedded editable number
    *  (a percentage, a count) — surfaced as a number field once it's selected. */
   valueField?: { label: string; default: number; min: number; max: number };
@@ -30,12 +30,12 @@ export interface Badge {
   previewScale?: number;
 }
 
-const pill = (accent: string): React.CSSProperties => ({
+const pill = (accent: string, textColor?: string): React.CSSProperties => ({
   display: "inline-block",
   fontSize: "40px",
   fontWeight: 800,
   letterSpacing: "4px",
-  color: "#fff",
+  color: textColor ?? "#fff",
   background: accent,
   padding: "16px 44px",
   borderRadius: "80px",
@@ -49,7 +49,7 @@ function textBadge(id: string, label: string, copy: string): Badge {
     label,
     defaultText: copy,
     previewScale: 0.15,
-    render: ({ accent, text }) => <span style={pill(accent)}>{text ?? copy}</span>,
+    render: ({ accent, textColor, text }) => <span style={pill(accent, textColor)}>{text ?? copy}</span>,
   };
 }
 
@@ -63,10 +63,10 @@ export const BADGES: Badge[] = [
     id: "five-star",
     label: "Five stars",
     previewScale: 0.12,
-    render: ({ accent }) => (
+    render: ({ accent, textColor }) => (
       <span style={{ display: "inline-flex", gap: "10px" }}>
         {[0, 1, 2, 3, 4].map((i) => (
-          <svg key={i} width="72" height="72" viewBox="0 0 24 24" fill={accent}>
+          <svg key={i} width="72" height="72" viewBox="0 0 24 24" fill={textColor ?? accent}>
             <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
           </svg>
         ))}
@@ -78,7 +78,7 @@ export const BADGES: Badge[] = [
     label: "Discount",
     valueField: { label: "Discount", default: 30, min: 5, max: 90 },
     previewScale: 0.09,
-    render: ({ accent, value = 30 }) => (
+    render: ({ accent, textColor, value = 30 }) => (
       <div
         style={{
           display: "flex",
@@ -92,8 +92,8 @@ export const BADGES: Badge[] = [
           boxShadow: "0 16px 60px rgba(0,0,0,0.4)",
         }}
       >
-        <div style={{ fontSize: "124px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>{value}%</div>
-        <div style={{ fontSize: "44px", fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "6px" }}>OFF</div>
+        <div style={{ fontSize: "124px", fontWeight: 900, color: textColor ?? "#fff", lineHeight: 1 }}>{value}%</div>
+        <div style={{ fontSize: "44px", fontWeight: 700, color: textColor ?? "rgba(255,255,255,0.9)", letterSpacing: "6px" }}>OFF</div>
       </div>
     ),
   },

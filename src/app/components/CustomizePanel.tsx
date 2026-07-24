@@ -63,6 +63,7 @@ export function CustomizePanel({
   onSetBadgeValue,
   onSetBadgeText,
   onSetBadgeColorOverride,
+  onSetBadgeTextColorOverride,
   onSetTextOverrides,
   onSetVariant,
   onSetStickerValue,
@@ -83,6 +84,7 @@ export function CustomizePanel({
   onSetBadgeValue: (id: string, value: number) => void;
   onSetBadgeText: (id: string, text: string) => void;
   onSetBadgeColorOverride: (id: string, colorOverride: string | undefined) => void;
+  onSetBadgeTextColorOverride: (id: string, colorOverride: string | undefined) => void;
   onSetTextOverrides: (id: string, patch: Partial<TextOverrides>) => void;
   onSetVariant: (id: string, variant: string) => void;
   onSetStickerValue: (id: string, value: number) => void;
@@ -163,6 +165,7 @@ export function CustomizePanel({
             onSetBadgeValue={onSetBadgeValue}
             onSetBadgeText={onSetBadgeText}
             onSetBadgeColorOverride={onSetBadgeColorOverride}
+            onSetBadgeTextColorOverride={onSetBadgeTextColorOverride}
             onSetTextOverrides={onSetTextOverrides}
             onSetVariant={onSetVariant}
             onSetStickerValue={onSetStickerValue}
@@ -227,6 +230,7 @@ function Inspector({
   onSetBadgeValue,
   onSetBadgeText,
   onSetBadgeColorOverride,
+  onSetBadgeTextColorOverride,
   onSetTextOverrides,
   onSetVariant,
   onSetStickerValue,
@@ -245,6 +249,7 @@ function Inspector({
   onSetBadgeValue: (id: string, value: number) => void;
   onSetBadgeText: (id: string, text: string) => void;
   onSetBadgeColorOverride: (id: string, colorOverride: string | undefined) => void;
+  onSetBadgeTextColorOverride: (id: string, colorOverride: string | undefined) => void;
   onSetTextOverrides: (id: string, patch: Partial<TextOverrides>) => void;
   onSetVariant: (id: string, variant: string) => void;
   onSetStickerValue: (id: string, value: number) => void;
@@ -395,7 +400,24 @@ function Inspector({
               instead gets paired with the sticker's shape colour below, so
               the two read as "shape colour, text colour" rather than two
               unlabelled colour rows with no visible relationship. */}
-          {!hasInternalText && (
+          {isChipText ? (
+            <div style={{ display: "flex", gap: space[8], width: "100%" }}>
+              <div style={{ flex: "1 1 0px", minWidth: 0, display: "flex", flexDirection: "column", gap: space[4] }}>
+                <SectionLabel>Shape Color</SectionLabel>
+                <ColorInput
+                  value={(selLayer && state.layers[selLayer.id]?.colorOverride) ?? accent}
+                  onChange={(hex) => onSetColorOverride(selectedId, hex)}
+                />
+              </div>
+              <div style={{ flex: "1 1 0px", minWidth: 0, display: "flex", flexDirection: "column", gap: space[4] }}>
+                <SectionLabel>Text Color</SectionLabel>
+                <ColorInput
+                  value={overrides.color ?? "#ffffff"}
+                  onChange={(hex) => onSetTextOverrides(selectedId, { color: hex })}
+                />
+              </div>
+            </div>
+          ) : !hasInternalText ? (
             <Field label="Color">
               <div style={{ display: "flex", alignItems: "center", gap: space[8] }}>
                 <div style={{ flex: 1 }}>
@@ -416,7 +438,7 @@ function Inspector({
                 )}
               </div>
             </Field>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -553,25 +575,20 @@ function Inspector({
           beyond the same picker used to add it in the first place, which
           read as "selecting did nothing." */}
       {isBadge && (
-        <div style={{ display: "flex", flexDirection: "column", gap: space[8] }}>
-          <SectionLabel>Colour</SectionLabel>
-          <div style={{ display: "flex", alignItems: "center", gap: space[8] }}>
-            <div style={{ flex: 1 }}>
-              <ColorInput
-                value={selExtra.colorOverride ?? accent}
-                onChange={(hex) => onSetBadgeColorOverride(selectedId, hex)}
-              />
-            </div>
-            {selExtra.colorOverride && (
-              <button
-                type="button"
-                title="Match the overall accent colour"
-                onClick={() => onSetBadgeColorOverride(selectedId, undefined)}
-                style={linkButtonStyle}
-              >
-                Reset
-              </button>
-            )}
+        <div style={{ display: "flex", gap: space[8], width: "100%" }}>
+          <div style={{ flex: "1 1 0px", minWidth: 0, display: "flex", flexDirection: "column", gap: space[4] }}>
+            <SectionLabel>Shape Color</SectionLabel>
+            <ColorInput
+              value={selExtra.colorOverride ?? accent}
+              onChange={(hex) => onSetBadgeColorOverride(selectedId, hex)}
+            />
+          </div>
+          <div style={{ flex: "1 1 0px", minWidth: 0, display: "flex", flexDirection: "column", gap: space[4] }}>
+            <SectionLabel>Text Color</SectionLabel>
+            <ColorInput
+              value={selExtra.textColorOverride ?? "#ffffff"}
+              onChange={(hex) => onSetBadgeTextColorOverride(selectedId, hex)}
+            />
           </div>
         </div>
       )}

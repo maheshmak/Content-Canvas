@@ -180,9 +180,9 @@ export function LayerCanvas({
         // wrapping paragraph would otherwise default to.
         const isChip = Boolean(layer.frameVariants);
         const maxWidthFrac = layer.kind === "text" && !isChip ? ls?.textWidth : undefined;
-        // A sticker's own colour, if set, stands in for the post accent only
+        // A sticker or chip's own colour, if set, stands in for the post accent only
         // for that one element — text keeps its separate colour override.
-        const layerAccent = layer.kind === "custom" && ls?.colorOverride ? ls.colorOverride : accent;
+        const layerAccent = (layer.kind === "custom" || isChip) && ls?.colorOverride ? ls.colorOverride : accent;
         const layerRenderProps = layerAccent === accent ? renderProps : { ...renderProps, accent: layerAccent };
         return (
           <Positioned
@@ -332,5 +332,5 @@ function ExtraBody({
     );
   }
   const badge = BADGES.find((b) => b.id === extra.badgeId) ?? BADGES[0];
-  return <badge.render accent={extra.colorOverride ?? accent} value={extra.value} text={extra.text} />;
+  return <badge.render accent={extra.colorOverride ?? accent} textColor={extra.textColorOverride} value={extra.value} text={extra.text} />;
 }

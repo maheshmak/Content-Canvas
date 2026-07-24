@@ -285,6 +285,7 @@ export type ExtraLayer =
        *  accent — without it, selecting an inserted badge had nothing of its
        *  own to show in the inspector beyond the same picker used to add it. */
       colorOverride?: string;
+      textColorOverride?: string;
       position: Position;
       motion: Motion;
     }

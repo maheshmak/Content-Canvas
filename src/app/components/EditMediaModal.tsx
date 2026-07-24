@@ -231,6 +231,13 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
     }));
   }, []);
 
+  const handleSetBadgeTextColorOverride = useCallback((id: string, textColorOverride: string | undefined) => {
+    setState((prev) => ({
+      ...prev,
+      extras: prev.extras.map((e) => (e.id === id && e.kind === "badge" ? { ...e, textColorOverride } : e)),
+    }));
+  }, []);
+
   /** Change a standalone shape element's shape/colour. */
   const handleSetShape = useCallback((id: string, patch: { shapeId?: string; color?: ColorRole }) => {
     setState((prev) => ({
@@ -461,6 +468,7 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
                 onSetBadgeValue={handleSetBadgeValue}
                 onSetBadgeText={handleSetBadgeText}
                 onSetBadgeColorOverride={handleSetBadgeColorOverride}
+                onSetBadgeTextColorOverride={handleSetBadgeTextColorOverride}
                 onSetVariant={handleSetVariant}
                 onSetStickerValue={handleSetStickerValue}
                 onSetFrameVariant={handleSetFrameVariant}
