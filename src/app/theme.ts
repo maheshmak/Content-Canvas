@@ -37,6 +37,7 @@ export const sp = {
   blueBorder:    "var(--sp-blue-border)",
   blueDisabled:  "var(--sp-blue-disabled)",
   gold:          "var(--sp-gold)",
+  aiYellow:      "var(--sp-ai-yellow)",
 } as const;
 
 /** Spacing scale — SocialPilot --spacing/* tokens, as lengths. */

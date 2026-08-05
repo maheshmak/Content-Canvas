@@ -46,6 +46,7 @@
   --sp-blue-border: var(--color\/border\/brand-primary);
   --sp-blue-disabled: var(--color\/brand\/primary-300);
   --sp-gold: var(--color\/brand\/secondary-500);
+  --sp-ai-yellow: var(--color\/ai\/yellow-500);
 
   /*
    * Spacing and radius. The design system stores these as unitless numbers
