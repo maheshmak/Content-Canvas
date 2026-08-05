@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ColorRole, FieldDef, MotionType, NumberField, SpringFeel, TemplateDef, TemplateState, TextOverrides } from "../templates/schema";
-import { sp, space, type, FONT } from "../theme";
+import { sp, space, type, FONT, radius } from "../theme";
 import { TabLabel } from "./TabLabel";
 import { ResetIcon } from "./icons";
 import { FieldControl } from "./FieldControl";
@@ -221,9 +221,11 @@ export function CustomizePanel({
  *  obvious next step the way it is once something's already selected. */
 function Overview({ onShuffle }: { onShuffle: () => void }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: space[12], padding: `${space[8]} 0` }}>
-      <Muted style={{ textAlign: "center" }}>Select an element to edit</Muted>
-      <Muted>or</Muted>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: space[8], padding: `${space[8]} 0` }}>
+      <p style={{ margin: 0, textAlign: "center", fontSize: type.s.size, lineHeight: type.s.line, color: sp.textPrimary }}>
+        Select an element to edit
+      </p>
+      <p style={{ margin: 0, fontSize: type.xs.size, lineHeight: type.xs.line, color: sp.textSecondary }}>(or)</p>
       <OutlineShuffleButton onClick={onShuffle} />
     </div>
   );
@@ -710,15 +712,14 @@ function OutlineShuffleButton({ onClick }: { onClick: () => void }) {
       aria-label="Shuffle the look"
       onClick={onClick}
       style={{
-        height: "32px",
         display: "flex",
         alignItems: "center",
         gap: space[4],
-        padding: `0 ${space[16]}`,
-        borderRadius: "16px",
-        border: `1px solid ${sp.borderInput}`,
+        padding: `4px ${space[16]} 4px ${space[8]}`,
+        borderRadius: radius[2],
+        border: `1px solid ${sp.aiYellow}`,
         background: "none",
-        color: sp.textPrimary,
+        color: sp.blue,
         fontFamily: FONT,
         fontSize: type.s.size,
         lineHeight: type.s.line,

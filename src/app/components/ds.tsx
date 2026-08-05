@@ -216,6 +216,8 @@ export function SegmentedTabs({
       role="tablist"
       style={{
         display: "flex",
+        gap: space[4],
+        padding: space[2],
         // A flex item with non-visible overflow gets an automatic minimum
         // size of 0 (the flexbox spec's special case), so this row was
         // getting shrunk to nothing — clipped to just its own borders —
@@ -224,12 +226,11 @@ export function SegmentedTabs({
         // its own content height no matter what its siblings do.
         flexShrink: 0,
         borderRadius: radius[4],
-        border: `1px solid ${sp.borderSub}`,
-        background: sp.bg,
-        overflow: "hidden",
+        border: `1px solid ${sp.borderInput}`,
+        background: sp.inputBg,
       }}
     >
-      {options.map((option, i) => {
+      {options.map((option) => {
         const selected = option.value === value;
         return (
           <button
@@ -240,17 +241,18 @@ export function SegmentedTabs({
             onClick={() => onChange(option.value)}
             style={{
               flex: 1,
-              height: "28px",
+              height: "24px",
               border: "none",
-              borderLeft: i > 0 ? `1px solid ${sp.borderSub}` : "none",
-              background: selected ? sp.white : "transparent",
-              color: selected ? sp.textPrimary : sp.textTertiary,
+              borderRadius: radius[4],
+              background: selected ? sp.inputActive : "transparent",
+              boxShadow: selected ? "0px 8px 12px rgba(0,0,0,0.12)" : "none",
+              color: selected ? sp.textPrimary : sp.textSecondary,
               fontFamily: FONT,
-              fontSize: type.s.size,
-              lineHeight: type.s.line,
+              fontSize: type.xs.size,
+              lineHeight: type.xs.line,
               fontWeight: 400,
               cursor: "pointer",
-              transition: "background-color 0.12s, color 0.12s",
+              transition: "background-color 0.12s, color 0.12s, box-shadow 0.12s",
             }}
           >
             {option.label}
