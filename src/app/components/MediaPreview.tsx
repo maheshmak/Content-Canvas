@@ -140,18 +140,28 @@ export function MediaStage({
   onDelete: (id: string) => void;
 }) {
   const [previewFrame, setPreviewFrame] = useState<number | null>(null);
+  const [soloId, setSoloId] = useState<string | null>(null);
   const rafRef = useRef<number | null>(null);
 
   const stopPreview = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
     setPreviewFrame(null);
+    setSoloId(null);
   }, []);
 
   /** Loops indefinitely — the post plays on repeat until a click on the
    *  canvas interrupts it (`stopPreview`), never settling into a single
-   *  static frame on its own. */
-  const play = useCallback(() => {
+   *  static frame on its own. Pass `solo` to play only that one element's
+   *  entrance while everything else stays on its settled frame — used for
+   *  previewing a single element's own Motion change in isolation, rather
+   *  than replaying the whole post around it. `startFrame` skips the loop
+   *  ahead — soloing an element authored with a long stagger delay (it plays
+   *  well after frame 0 in the full post) otherwise meant watching a long
+   *  wait before anything happened; starting right at its own delay makes an
+   *  edit read as instant regardless of where it sits in the original
+   *  stagger. */
+  const play = useCallback((solo?: string | null, startFrame = 0) => {
     if (!template) return;
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     const total = template.durationInFrames;
@@ -159,10 +169,11 @@ export function MediaStage({
     const startedAt = performance.now();
     const tick = (now: number) => {
       const elapsed = Math.floor(((now - startedAt) / 1000) * fps);
-      setPreviewFrame(elapsed % total);
+      setPreviewFrame((elapsed + startFrame) % total);
       rafRef.current = requestAnimationFrame(tick);
     };
-    setPreviewFrame(0);
+    setSoloId(solo ?? null);
+    setPreviewFrame(startFrame % total);
     rafRef.current = requestAnimationFrame(tick);
   }, [template]);
 
@@ -189,6 +200,36 @@ export function MediaStage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.values.animationStyle]);
 
+  // Motion is per-element now, and the edit canvas otherwise sits on the
+  // settled last frame — an entrance already finished has nothing to show,
+  // so picking a new Entrance or Feel for the selected element looked like
+  // it did nothing. Unlike the post-wide restart above, this one plays even
+  // from a paused state: there's no other way to see a per-element motion
+  // change land. Only fires for an actual value change on the *same*
+  // selection — switching to a different element (which naturally has a
+  // different signature) must not itself trigger a replay. Solos the replay
+  // to just that element: the rest of the post stays settled, so editing one
+  // element's motion isn't a whole-canvas replay to watch for the one part
+  // that changed.
+  const selectedMotionSignature = (() => {
+    if (!selectedId) return null;
+    const ls = state.layers[selectedId];
+    const extra = state.extras.find((e) => e.id === selectedId);
+    return `${ls?.motionFeel ?? ""}|${ls?.motionType ?? ""}|${extra?.motionFeel ?? ""}|${extra?.motionType ?? ""}`;
+  })();
+  const prevMotionRef = useRef<{ id: string | null; signature: string | null }>({ id: null, signature: null });
+  useEffect(() => {
+    const prev = prevMotionRef.current;
+    if (selectedId && prev.id === selectedId && prev.signature !== null && prev.signature !== selectedMotionSignature) {
+      const delay = template?.layers.find((l) => l.id === selectedId)?.motion.delay
+        ?? state.extras.find((e) => e.id === selectedId)?.motion.delay
+        ?? 0;
+      play(selectedId, delay);
+    }
+    prevMotionRef.current = { id: selectedId, signature: selectedMotionSignature };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selectedMotionSignature]);
+
   // Clicks that land on the padding around the frame (not inside it — the
   // frame and EditableCanvas handle their own clicks) toggle playback, same
   // as an empty-canvas click does inside the frame. This is what makes "any
@@ -201,6 +242,10 @@ export function MediaStage({
     if (!template) return;
     if ((e.target as HTMLElement).closest("[data-frame]")) return;
     onSelect(null);
+    // A solo preview auto-started from a Motion edit, not a deliberate play
+    // gesture — moving on from it should show the finished post playing, not
+    // silently stop (the ordinary toggle below is for a real play/pause click).
+    if (soloId) { play(); return; }
     if (previewFrame != null) stopPreview();
     else play();
   };
@@ -247,7 +292,8 @@ export function MediaStage({
               onDelete={onDelete}
               previewFrame={previewFrame}
               onCancelPreview={stopPreview}
-              onEmptyClick={play}
+              onEmptyClick={() => play()}
+              soloId={soloId}
             />
           );
         }}

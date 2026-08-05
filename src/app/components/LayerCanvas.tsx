@@ -26,7 +26,7 @@ export const BADGE_TEXT_FRAME_VARIANTS: VariantOption[] = [
   { id: "tag", label: "Tag" },
 ];
 
-const BADGE_TEXT_FRAME_CSS: Record<string, CSSProperties> = {
+export const BADGE_TEXT_FRAME_CSS: Record<string, CSSProperties> = {
   pill: { borderRadius: "999px" },
   rounded: { borderRadius: "14px" },
   sharp: { borderRadius: "0px" },
@@ -150,6 +150,7 @@ export function LayerCanvas({
   width,
   height,
   interactive,
+  soloId,
 }: {
   template: TemplateDef;
   state: TemplateState;
@@ -159,9 +160,16 @@ export function LayerCanvas({
   height: number;
   /** Edit mode: layers accept pointer events so they can be selected/dragged. */
   interactive?: boolean;
+  /** When set, only this element plays `frame` — every other element renders
+   *  at the post's settled last frame, as if its own entrance already
+   *  finished. Used to preview one element's Motion change in isolation,
+   *  rather than replaying the whole post around it. */
+  soloId?: string | null;
 }) {
   const postFeel = normalizeFeel(state.values.animationStyle as string | undefined);
   const accent = String(state.values.accentColor ?? template.previewColor);
+  const settledFrame = template.durationInFrames - 1;
+  const frameFor = (id: string) => (soloId && id !== soloId ? settledFrame : frame);
   const renderProps = { values: state.values, accent, frame, width, height };
 
   const visible = template.layers.filter((l) => state.layers[l.id]?.visible !== false);
@@ -184,16 +192,22 @@ export function LayerCanvas({
         // for that one element — text keeps its separate colour override.
         const layerAccent = (layer.kind === "custom" || isChip) && ls?.colorOverride ? ls.colorOverride : accent;
         const layerRenderProps = layerAccent === accent ? renderProps : { ...renderProps, accent: layerAccent };
+        // An element's own spring feel and entrance geometry, if set, stand
+        // in for the post's authored defaults only for that one element —
+        // same pattern as its own colour.
+        const layerFeel = ls?.motionFeel ? normalizeFeel(ls.motionFeel) : postFeel;
+        const layerMotion = ls?.motionType ? { ...layer.motion, type: ls.motionType } : layer.motion;
+        const layerFrame = frameFor(layer.id);
         return (
           <Positioned
             key={layer.id}
             id={layer.id}
             interactive={interactive}
             position={pos}
-            motion={layer.motion}
-            frame={frame}
+            motion={layerMotion}
+            frame={layerFrame}
             fps={fps}
-            postFeel={postFeel}
+            postFeel={layerFeel}
             width={width}
             height={height}
             maxWidthFrac={maxWidthFrac}
@@ -202,7 +216,7 @@ export function LayerCanvas({
             <LayerBody
               layer={layer}
               accent={layerAccent}
-              renderProps={layerRenderProps}
+              renderProps={layerFrame === frame ? layerRenderProps : { ...layerRenderProps, frame: layerFrame }}
               overrides={ls?.overrides}
               variant={ls?.variant ?? layer.defaultVariant}
               frameVariant={ls?.frameVariant ?? layer.defaultFrameVariant}
@@ -212,23 +226,26 @@ export function LayerCanvas({
       })}
 
       {state.extras.map((extra) => {
-        const progress = enterProgress(frame, fps, postFeel, extra.motion.delay);
+        const extraFeel = extra.motionFeel ? normalizeFeel(extra.motionFeel) : postFeel;
+        const extraMotion = extra.motionType ? { ...extra.motion, type: extra.motionType } : extra.motion;
+        const extraFrame = frameFor(extra.id);
+        const progress = enterProgress(extraFrame, fps, extraFeel, extraMotion.delay);
         return (
           <Positioned
             key={extra.id}
             id={extra.id}
             interactive={interactive}
             position={extra.position}
-            motion={extra.motion}
-            frame={frame}
+            motion={extraMotion}
+            frame={extraFrame}
             fps={fps}
-            postFeel={postFeel}
+            postFeel={extraFeel}
             width={width}
             height={height}
             maxWidthFrac={extra.kind === "text" ? extra.textWidth : undefined}
             fixedWidth={extra.kind === "text"}
           >
-            <ExtraBody extra={extra} accent={accent} progress={progress} canvasWidth={width} canvasHeight={height} frame={frame} />
+            <ExtraBody extra={extra} accent={accent} progress={progress} canvasWidth={width} canvasHeight={height} frame={extraFrame} />
           </Positioned>
         );
       })}
@@ -256,7 +273,10 @@ function LayerBody({
   frameVariant?: string;
 }) {
   if (layer.kind === "custom" && layer.render) {
-    return <layer.render {...renderProps} variant={variant} overrides={layer.hasInternalText ? overrides : undefined} />;
+    // Every sticker reads `overrides.sizePct` for its own whole-element Size
+    // control now, not just the ones with internal text (which additionally
+    // read colour/font for their digits) — pass overrides through always.
+    return <layer.render {...renderProps} variant={variant} overrides={overrides} />;
   }
   const text = String(renderProps.values[layer.textKey ?? ""] ?? "");
   if (!text) return null;
@@ -304,7 +324,9 @@ function ExtraBody({
 }) {
   if (extra.kind === "text") {
     const style = TEXT_STYLES.find((s) => s.id === extra.styleId) ?? TEXT_STYLES[0];
-    return <div style={applyOverrides(style.style(accent), extra.overrides)}>{extra.text}</div>;
+    const base = applyOverrides(style.style(accent), extra.overrides);
+    const frameCss = extra.frameVariant ? BADGE_TEXT_FRAME_CSS[extra.frameVariant] : undefined;
+    return <div style={frameCss ? { ...base, ...frameCss } : base}>{extra.text}</div>;
   }
   if (extra.kind === "shape") {
     const px = Math.max(24, extra.size * canvasWidth);
@@ -327,7 +349,7 @@ function ExtraBody({
         width={canvasWidth}
         height={canvasHeight}
         variant={extra.variant ?? reg.defaultVariant}
-        overrides={reg.hasInternalText ? extra.overrides : undefined}
+        overrides={extra.overrides}
       />
     );
   }

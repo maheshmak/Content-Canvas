@@ -3,9 +3,14 @@ import { TextIcon, ShapesIcon, TemplatesIcon } from "./icons";
 
 export type EditorTab = "text" | "shape" | "templates";
 
-const TABS: { id: EditorTab; label: string; Icon: typeof TextIcon }[] = [
-  { id: "text", label: "Text", Icon: TextIcon },
-  { id: "shape", label: "Shape", Icon: ShapesIcon },
+const TABS: { id: EditorTab; label: string; Icon: typeof TextIcon; disabled?: boolean }[] = [
+  // Neither panel is ready to ship yet — disabled rather than clickable-to-
+  // a-dead-end, so there's nothing to accidentally reach until each is
+  // actually built out. Shape's sticker artwork (Offer/Location/Rating/Tip)
+  // is being rebuilt from real source files one at a time; re-enable once
+  // all four are done.
+  { id: "text", label: "Text (coming soon)", Icon: TextIcon, disabled: true },
+  { id: "shape", label: "Shape (coming soon)", Icon: ShapesIcon, disabled: true },
   { id: "templates", label: "Templates", Icon: TemplatesIcon },
 ];
 
@@ -34,16 +39,18 @@ export function IconRail({
         borderRight: `1px solid ${sp.borderSub}`,
       }}
     >
-      {TABS.map(({ id, label, Icon }) => {
+      {TABS.map(({ id, label, Icon, disabled }) => {
         const isActive = id === active;
         return (
           <button
             key={id}
             type="button"
-            onClick={() => onChange(id)}
+            disabled={disabled}
+            onClick={() => !disabled && onChange(id)}
             title={label}
             aria-label={label}
             aria-pressed={isActive}
+            aria-disabled={disabled}
             style={{
               position: "relative",
               width: "48px",
@@ -54,7 +61,8 @@ export function IconRail({
               padding: "4px 8px",
               border: "none",
               background: isActive ? sp.bg : "transparent",
-              cursor: "pointer",
+              cursor: disabled ? "not-allowed" : "pointer",
+              opacity: disabled ? 0.4 : 1,
             }}
           >
             {/* Overlaid rather than a border, so the 2px edge does not widen

@@ -127,6 +127,11 @@ export interface LayerRenderProps {
    *  badge's "%", a tip's number) — only present for stickers whose content
    *  is text, and only used when `LayerDef.hasInternalText` opts a layer in. */
   overrides?: TextOverrides;
+  /** A swatch-picker hint: render the smallest recognisable unit of this
+   *  sticker rather than its full authored content — currently only read by
+   *  `RatingRow`, which otherwise always draws its whole 5-star row even at
+   *  swatch scale, where the point is "which star style," not "how many." */
+  previewSingle?: boolean;
 }
 
 /** One curated rendering variant a sticker can offer — never a free-form shape
@@ -182,6 +187,17 @@ export interface LayerDef {
    *  single scale leaves some swatches looking near-empty. Falls back to a
    *  scale tuned for a mid-size sticker. */
   previewScale?: number;
+  /**
+   * How far this layer's own rendered box extends below its `position.y`
+   * anchor, as a fraction of the canvas height. Text's real extent already
+   * falls out of comparing anchor points against its neighbours, so this is
+   * for elements whose visual size the anchor point alone doesn't capture —
+   * chiefly a large, fixed-size sticker like a circular discount badge.
+   * Without it, Shuffle's placement only ever kept anchor points apart, so a
+   * 440px badge could still visually overlap a text block whose anchor sat a
+   * "safe"-looking distance below it.
+   */
+  footprint?: number;
   /**
    * Default wrap width for `kind: "text"`, as a fraction of the canvas.
    * Falls back to the standard safe-area width — set this when a layer lives
@@ -240,6 +256,17 @@ export interface LayerState {
   /** Manual per-property typography overrides — the only text customization
    *  surface; there is no separate named-preset picker to fall back to. */
   overrides?: TextOverrides;
+  /** This element's own spring feel, independent of the post's overall
+   *  motion — the post's feel still applies when this is unset. Motion used
+   *  to be one post-wide setting; now every element can move to its own
+   *  rhythm the same way it can carry its own colour. */
+  motionFeel?: SpringFeel;
+  /** This element's own entrance geometry (fade / slide up / pop) — falls
+   *  back to whatever the layer was authored with when unset. Feel alone
+   *  ("how bouncy") wasn't enough to show for anything: an element visibly
+   *  sliding up vs. popping open is the more obvious part of "how does this
+   *  move," and it used to be fixed at authoring time with no way to change it. */
+  motionType?: MotionType;
 }
 
 /** A shape/sticker/pin's fill: the post's accent, or a neutral. Never a raw hex. */
@@ -268,7 +295,18 @@ export type ExtraLayer =
        *  text renders on top of; not user-switchable. */
       styleId: string;
       textWidth?: number;
+      /** Set only when this text originated from (or was styled as) a
+       *  badge-style chip — its curated background frame (Pill/Rounded/
+       *  Sharp/Tag). Without this, duplicating a chip-text layer (e.g. a
+       *  "Featured" label) dropped its shape and left plain text behind. */
+      frameVariant?: string;
       overrides?: TextOverrides;
+      /** This element's own spring feel, independent of the post's overall
+       *  motion. */
+      motionFeel?: SpringFeel;
+      /** This element's own entrance geometry, independent of the post's
+       *  authored default. */
+      motionType?: MotionType;
       position: Position;
       motion: Motion;
     }
@@ -286,6 +324,12 @@ export type ExtraLayer =
        *  own to show in the inspector beyond the same picker used to add it. */
       colorOverride?: string;
       textColorOverride?: string;
+      /** This element's own spring feel, independent of the post's overall
+       *  motion. */
+      motionFeel?: SpringFeel;
+      /** This element's own entrance geometry, independent of the post's
+       *  authored default. */
+      motionType?: MotionType;
       position: Position;
       motion: Motion;
     }
@@ -296,6 +340,12 @@ export type ExtraLayer =
       color: ColorRole;
       /** Width as a fraction of canvas width; shapes render in a 1:1 box. */
       size: number;
+      /** This element's own spring feel, independent of the post's overall
+       *  motion. */
+      motionFeel?: SpringFeel;
+      /** This element's own entrance geometry, independent of the post's
+       *  authored default. */
+      motionType?: MotionType;
       position: Position;
       motion: Motion;
     }
@@ -318,6 +368,12 @@ export type ExtraLayer =
        *  number) — snapshotted at duplication time, independent of the
        *  original's value the way duplicated text is independent copy. */
       value?: number;
+      /** This element's own spring feel, independent of the post's overall
+       *  motion. */
+      motionFeel?: SpringFeel;
+      /** This element's own entrance geometry, independent of the post's
+       *  authored default. */
+      motionType?: MotionType;
       position: Position;
       motion: Motion;
     };

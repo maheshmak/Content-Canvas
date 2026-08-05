@@ -193,6 +193,74 @@ export function PillSelect({
   );
 }
 
+/**
+ * Segmented tab switcher — same track as the library's own tab-container
+ * (`surface/primary` fill, `border/secondary` 1px edge, 4px radius, no
+ * padding or gaps, segments flush against each other and clipped to the
+ * track's corners) rather than an invented style. Reserved for top-level view
+ * switches (e.g. an inspector's Properties/Motion tabs) where a row of
+ * separate pill buttons reads as multiple choices rather than one either/or
+ * toggle.
+ */
+export function SegmentedTabs({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      style={{
+        display: "flex",
+        // A flex item with non-visible overflow gets an automatic minimum
+        // size of 0 (the flexbox spec's special case), so this row was
+        // getting shrunk to nothing — clipped to just its own borders —
+        // whenever the properties list above it in the same flex column ran
+        // long enough to need shrinking. `flexShrink: 0` keeps this row at
+        // its own content height no matter what its siblings do.
+        flexShrink: 0,
+        borderRadius: radius[4],
+        border: `1px solid ${sp.borderSub}`,
+        background: sp.bg,
+        overflow: "hidden",
+      }}
+    >
+      {options.map((option, i) => {
+        const selected = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(option.value)}
+            style={{
+              flex: 1,
+              height: "28px",
+              border: "none",
+              borderLeft: i > 0 ? `1px solid ${sp.borderSub}` : "none",
+              background: selected ? sp.white : "transparent",
+              color: selected ? sp.textPrimary : sp.textTertiary,
+              fontFamily: FONT,
+              fontSize: type.s.size,
+              lineHeight: type.s.line,
+              fontWeight: 400,
+              cursor: "pointer",
+              transition: "background-color 0.12s, color 0.12s",
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Input-Dropdown — 32px tall, 8px left / 4px right for the chevron. */
 export function Select({
   options,

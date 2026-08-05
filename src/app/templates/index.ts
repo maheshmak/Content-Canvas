@@ -1,12 +1,12 @@
 import type { CSSProperties } from "react";
 import type { FieldDef, TemplateDef } from "./schema";
 import { DEFAULT_FEEL, FEEL_OPTIONS } from "../components/AnimationPlayer";
-import { BADGE_TEXT_FRAME_VARIANTS } from "../components/LayerCanvas";
 import {
   RatingRow, RATING_VARIANTS,
   DiscountBadge, BADGE_FRAME_VARIANTS,
   MapPin, PIN_VARIANTS,
   TipNumeral, NUMBER_VARIANTS,
+  GrandOpeningBadge, GRAND_BADGE_VARIANTS,
   Confetti,
 } from "./art";
 
@@ -57,31 +57,6 @@ const support = (): CSSProperties => ({
   margin: 0,
 });
 
-const chip = (accent: string): CSSProperties => ({
-  display: "inline-block",
-  fontSize: "40px",
-  fontWeight: 700,
-  letterSpacing: "6px",
-  textTransform: "uppercase",
-  color: "#fff",
-  background: accent,
-  padding: "12px 36px",
-  borderRadius: "60px",
-  whiteSpace: "pre-wrap",
-  margin: 0,
-});
-
-const pricePill = (accent: string): CSSProperties => ({
-  display: "inline-block",
-  fontSize: "110px",
-  fontWeight: 900,
-  color: accent,
-  lineHeight: 1,
-  textShadow: "0 2px 10px rgba(0,0,0,0.45)",
-  whiteSpace: "pre-wrap",
-  margin: 0,
-});
-
 const accentLine = (accent: string): CSSProperties => ({
   fontSize: "46px",
   fontWeight: 600,
@@ -112,7 +87,7 @@ const accentField = (defaultColor: string): FieldDef => ({
 export const templates: TemplateDef[] = [
   {
     id: "five-star-rating",
-    name: "Star Rating",
+    name: "Rating",
     category: "Reviews",
     description: "A customer review, with the rating up front",
     previewColor: "#F5A623",
@@ -131,7 +106,7 @@ export const templates: TemplateDef[] = [
         kind: "custom",
         render: RatingRow,
         variants: RATING_VARIANTS,
-        defaultVariant: "filled",
+        defaultVariant: "classic",
         fields: [{ key: "rating", type: "number", label: "Stars", default: 5, min: 1, max: 5 }],
         position: { x: 0.5, y: 0.62, align: "center" },
         motion: { type: "fade", delay: 5 },
@@ -183,28 +158,22 @@ export const templates: TemplateDef[] = [
     globalFields: [motionStyleField, accentField("#FF6B35")],
     layers: [
       {
-        id: "label",
-        label: "Label",
-        icon: "🏷️",
-        kind: "text",
-        textKey: "label",
-        style: chip,
-        frameVariants: BADGE_TEXT_FRAME_VARIANTS,
-        defaultFrameVariant: "pill",
-        fields: [{ key: "label", type: "text", label: "Label", default: "Flash Sale", maxLength: 20 }],
-        position: { x: 0.5, y: 0.08, align: "center" },
-        motion: { type: "fade", delay: 0 },
-      },
-      {
         id: "badge",
         label: "Discount badge",
         icon: "💯",
         kind: "custom",
         render: DiscountBadge,
         variants: BADGE_FRAME_VARIANTS,
-        defaultVariant: "circle",
-        previewScale: 0.1,
+        defaultVariant: "seal",
+        // Must match `STICKER_REGISTRY["discount-badge"].previewScale` in
+        // art.tsx — this LayerDef-level copy wins over the registry's via
+        // `selLayer?.previewScale ?? stickerReg?.previewScale`, so editing
+        // only the registry (as happened once) silently does nothing here.
+        previewScale: 0.105,
         hasInternalText: true,
+        // A fixed 440px circle — Shuffle needs this to keep the badge itself,
+        // not just its anchor point, clear of the headline/tagline below it.
+        footprint: 440 / 1920,
         fields: [{ key: "discount", type: "number", label: "Discount %", default: 30, min: 5, max: 90 }],
         position: { x: 0.5, y: 0.42, align: "center" },
         motion: { type: "pop", delay: 5 },
@@ -240,7 +209,7 @@ export const templates: TemplateDef[] = [
 
   {
     id: "grand-opening",
-    name: "Grand Opening",
+    name: "Now Open",
     category: "Announcements",
     description: "A celebratory announcement with confetti",
     previewColor: "#8B5CF6",
@@ -257,13 +226,18 @@ export const templates: TemplateDef[] = [
         id: "badge",
         label: "Badge",
         icon: "🏷️",
-        kind: "text",
-        textKey: "badge",
-        style: chip,
-        frameVariants: BADGE_TEXT_FRAME_VARIANTS,
-        defaultFrameVariant: "pill",
+        kind: "custom",
+        render: GrandOpeningBadge,
+        variants: GRAND_BADGE_VARIANTS,
+        defaultVariant: "sign",
+        // Must match `STICKER_REGISTRY["grand-badge"].previewScale` in
+        // art.tsx — see the comment on Offer's own badge layer for why this
+        // LayerDef-level copy has to stay in sync by hand.
+        previewScale: 0.105,
+        hasInternalText: true,
+        footprint: 440 / 1920,
         fields: [{ key: "badge", type: "text", label: "Badge", default: "Now Open", maxLength: 20 }],
-        position: { x: 0.5, y: 0.07, align: "center" },
+        position: { x: 0.5, y: 0.17, align: "center" },
         motion: { type: "pop", delay: 12 },
       },
       {
@@ -302,96 +276,10 @@ export const templates: TemplateDef[] = [
         icon: "📅",
         kind: "text",
         textKey: "date",
-        style: chip,
-        frameVariants: BADGE_TEXT_FRAME_VARIANTS,
-        defaultFrameVariant: "pill",
+        style: accentLine,
         fields: [{ key: "date", type: "text", label: "Date", default: "July 28, 2025", maxLength: 30 }],
         position: { x: 0.5, y: 0.69, align: "center" },
         motion: { type: "fade", delay: 54 },
-      },
-    ],
-  },
-
-  {
-    id: "service-highlight",
-    name: "Service Spotlight",
-    category: "Services & Prices",
-    description: "One service, its price up front",
-    previewColor: "#0EA5E9",
-    icon: "🌟",
-    durationInFrames: 90,
-    fps: 30,
-    width: 1080,
-    height: 1920,
-    scrim: true,
-    globalFields: [motionStyleField, accentField("#0EA5E9")],
-    layers: [
-      {
-        id: "label",
-        label: "Label",
-        icon: "🏷️",
-        kind: "text",
-        textKey: "label",
-        style: chip,
-        frameVariants: BADGE_TEXT_FRAME_VARIANTS,
-        defaultFrameVariant: "pill",
-        fields: [{ key: "label", type: "text", label: "Label", default: "Featured", maxLength: 20 }],
-        position: { x: 0.075, y: 0.07, align: "left" },
-        motion: { type: "fade", delay: 8 },
-      },
-      {
-        id: "price",
-        label: "Price",
-        icon: "💷",
-        kind: "text",
-        textKey: "price",
-        style: pricePill,
-        // A short corner tag, not a wrapping paragraph — without its own
-        // width it defaulted to the same near-full-canvas box "label" gets,
-        // which put both layers' hit areas on top of each other even though
-        // they render in opposite corners.
-        textWidth: 0.3,
-        // A price tag in the opposite corner from the label, rather than
-        // buried in the bottom stack — the number is this template's point.
-        position: { x: 0.925, y: 0.065, align: "right" },
-        fields: [
-          { key: "price", type: "text", label: "Price", default: "$35", maxLength: 12, showCount: false },
-        ],
-        motion: { type: "pop", delay: 12 },
-      },
-      {
-        id: "service",
-        label: "Service name",
-        icon: "✂️",
-        kind: "text",
-        source: "post.headline",
-        textKey: "serviceName",
-        style: headline,
-        fields: [
-          { key: "serviceName", type: "text", label: "Service name", default: "Classic Haircut", maxLength: 30 },
-        ],
-        position: { x: 0.075, y: 0.78, align: "left" },
-        motion: { type: "slide-up", delay: 30 },
-      },
-      {
-        id: "description",
-        label: "Description",
-        icon: "📝",
-        kind: "text",
-        source: "post.cta",
-        textKey: "description",
-        style: support,
-        fields: [
-          {
-            key: "description",
-            type: "text",
-            label: "Description",
-            default: "Precision cut, wash & style included",
-            maxLength: 60,
-          },
-        ],
-        position: { x: 0.075, y: 0.9, align: "left" },
-        motion: { type: "fade", delay: 50 },
       },
     ],
   },
@@ -417,9 +305,14 @@ export const templates: TemplateDef[] = [
         kind: "custom",
         render: TipNumeral,
         variants: NUMBER_VARIANTS,
-        defaultVariant: "plain",
-        previewScale: 0.3,
+        defaultVariant: "circle",
+        // Must match `STICKER_REGISTRY["tip-numeral"].previewScale` in
+        // art.tsx — see the comment on Offer's own badge layer for why this
+        // LayerDef-level copy has to stay in sync by hand.
+        previewScale: 0.21,
         hasInternalText: true,
+        // Worst case across variants: the bare digit runs ~220px tall.
+        footprint: 220 / 1920,
         fields: [{ key: "tipNumber", type: "number", label: "Tip number", default: 1, min: 1, max: 99 }],
         position: { x: 0.92, y: 0.03, align: "right" },
         motion: { type: "fade", delay: 0 },
@@ -485,7 +378,10 @@ export const templates: TemplateDef[] = [
         render: MapPin,
         variants: PIN_VARIANTS,
         defaultVariant: "classic",
-        previewScale: 0.5,
+        // Must match `STICKER_REGISTRY["pin"].previewScale` in art.tsx —
+        // see the comment on Offer's own badge layer for why this
+        // LayerDef-level copy has to stay in sync by hand.
+        previewScale: 0.23,
         fields: [],
         position: { x: 0.5, y: 0.6, align: "center" },
         motion: { type: "slide-up", delay: 0 },

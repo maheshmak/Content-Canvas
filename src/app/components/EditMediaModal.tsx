@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import type { Align, ColorRole, ExtraLayer, TemplateDef, TemplateState, TextOverrides, PostCopy } from "../templates/schema";
+import type { Align, ColorRole, ExtraLayer, MotionType, SpringFeel, TemplateDef, TemplateState, TextOverrides, PostCopy } from "../templates/schema";
 import { getDefaults, canHide, newExtraId } from "../templates/schema";
 import { shuffle } from "./shuffle";
 import { BADGES } from "./badges";
@@ -11,6 +11,7 @@ import { IconButton } from "./IconButton";
 import { IconRail } from "./IconRail";
 import type { EditorTab } from "./IconRail";
 import { TemplatePanel } from "./TemplatePanel";
+import { ElementsPanel } from "./ElementsPanel";
 import { CustomizePanel } from "./CustomizePanel";
 import { MediaStage } from "./MediaPreview";
 import type { MediaItem, MediaType } from "./MediaPreview";
@@ -77,6 +78,11 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
     setTemplate(t);
     // Post copy flows in here, so the user never meets a blank box.
     setState(getDefaults(t, post));
+    // Nothing selected — picking a template is its own decision, not also a
+    // decision about which element to edit. Landing on an element already
+    // selected made Customize look like it required drilling into one
+    // element before you could do anything, when the actual first move is
+    // often just Shuffle a few times.
     setSelectedId(null);
   }, [post]);
 
@@ -171,12 +177,16 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
     }));
   }, []);
 
-  /** Which of a badge-text layer's own curated frames to draw. */
+  /** Which of a badge-text layer's own curated frames to draw — a template
+   *  layer, or a duplicated chip-text extra. */
   const handleSetFrameVariant = useCallback((id: string, frameVariant: string) => {
     setState((prev) => {
       const layer = prev.layers[id];
-      if (!layer) return prev;
-      return { ...prev, layers: { ...prev.layers, [id]: { ...layer, frameVariant } } };
+      if (layer) return { ...prev, layers: { ...prev.layers, [id]: { ...layer, frameVariant } } };
+      return {
+        ...prev,
+        extras: prev.extras.map((e) => (e.id === id && e.kind === "text" ? { ...e, frameVariant } : e)),
+      };
     });
   }, []);
 
@@ -190,6 +200,34 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
       return {
         ...prev,
         extras: prev.extras.map((e) => (e.id === id && e.kind === "sticker" ? { ...e, colorOverride } : e)),
+      };
+    });
+  }, []);
+
+  /** An element's own spring feel, independent of the post's overall motion —
+   *  a template layer, or any extra (text, badge, shape, sticker) — since
+   *  motion is now a per-element choice rather than one post-wide setting.
+   *  `undefined` clears it back to following the post's own motion. */
+  const handleSetMotionFeel = useCallback((id: string, motionFeel: SpringFeel | undefined) => {
+    setState((prev) => {
+      const layer = prev.layers[id];
+      if (layer) return { ...prev, layers: { ...prev.layers, [id]: { ...layer, motionFeel } } };
+      return {
+        ...prev,
+        extras: prev.extras.map((e) => (e.id === id ? { ...e, motionFeel } : e)),
+      };
+    });
+  }, []);
+
+  /** An element's own entrance geometry (fade / slide up / pop), independent
+   *  of the post's authored default. `undefined` clears it back to that. */
+  const handleSetMotionType = useCallback((id: string, motionType: MotionType | undefined) => {
+    setState((prev) => {
+      const layer = prev.layers[id];
+      if (layer) return { ...prev, layers: { ...prev.layers, [id]: { ...layer, motionType } } };
+      return {
+        ...prev,
+        extras: prev.extras.map((e) => (e.id === id ? { ...e, motionType } : e)),
       };
     });
   }, []);
@@ -270,8 +308,17 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
           id: newId,
           kind: "text",
           text: String(prev.values[layer.textKey] ?? ""),
-          styleId: "headline",
+          // A chip's background/padding lives on its treatment, not its frame
+          // variant — "headline" has neither, so a duplicated "Featured"
+          // label rendered as bare white text with no box at all. "label" is
+          // the registered treatment closest to the template's own bespoke
+          // chip style (uppercase, accent-filled pill).
+          styleId: layer.frameVariants ? "label" : "headline",
           textWidth: ls.textWidth,
+          // A badge-style chip's shape is part of what it looks like — drop
+          // this and a duplicated "Featured" label loses its background and
+          // reads as plain text with nothing carried over.
+          frameVariant: layer.frameVariants ? ls.frameVariant ?? layer.defaultFrameVariant : undefined,
           overrides: ls.overrides,
           position: nudge({ x: ls.x, y: ls.y, align: ls.align }),
           motion: layer.motion,
@@ -302,32 +349,43 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
     if (created) setSelectedId(newId);
   }, [template]);
 
-  /** Drop a sticker onto the canvas, centred, and select it. A stand-in for a
-   *  proper browse-and-insert workflow — the simplest thing that gets a
-   *  sticker onto the post at all. */
+  // Every "add X to the canvas" action drops the new extra in the same spot,
+  // with the same entrance — centred, popping in. Shared here so the three
+  // insert handlers below don't each restate it.
+  const CENTERED_POP = { position: { x: 0.5, y: 0.5, align: "center" as const }, motion: { type: "pop" as const, delay: 0 } };
+
+  /** Drop a badge onto the canvas, centred. Deliberately doesn't select the
+   *  new element — adding one should feel like every other element: it lands
+   *  on the canvas, and you click it there, same as anything already on the
+   *  post, to open its own options. Auto-selecting made "add" and "select"
+   *  the same click, a different interaction from how everything else works. */
   const handleAddBadge = useCallback((badgeId: string) => {
     const badge = BADGES.find((b) => b.id === badgeId);
-    const newId = newExtraId();
     setState((prev) => ({
       ...prev,
       extras: [
         ...prev.extras,
-        {
-          id: newId,
-          kind: "badge",
-          badgeId,
-          value: badge?.valueField?.default,
-          position: { x: 0.5, y: 0.5, align: "center" },
-          motion: { type: "pop", delay: 0 },
-        },
+        { id: newExtraId(), kind: "badge", badgeId, value: badge?.valueField?.default, ...CENTERED_POP },
       ],
     }));
-    // Deliberately doesn't select the new sticker. Adding one should feel
-    // like every other element: it lands on the canvas, and you click it
-    // there — same as anything already on the post — to open its own
-    // options. Auto-selecting made "add" and "select" the same click, which
-    // is a different, inconsistent interaction from how every other element
-    // already works.
+  }, []);
+
+  // Sticker insertion (handleAddSticker) is paused along with the Shape
+  // tab's Stickers section — see ElementsPanel.tsx — until Phase 11 rebuilds
+  // Offer/Location/Rating/Tip from real SVG source. `STICKER_REGISTRY` is
+  // still used elsewhere (handleDuplicate, CustomizePanel).
+
+  /** Drop a standalone shape onto the canvas, centred — same non-selecting
+   *  behaviour as `handleAddBadge`. Accent colour and a mid-size default so
+   *  it's immediately visible without needing to be resized first. */
+  const handleAddShape = useCallback((shapeId: string) => {
+    setState((prev) => ({
+      ...prev,
+      extras: [
+        ...prev.extras,
+        { id: newExtraId(), kind: "shape", shapeId, color: "accent", size: 0.28, ...CENTERED_POP },
+      ],
+    }));
   }, []);
 
   const handleDelete = useCallback((id: string) => {
@@ -352,6 +410,11 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
   const isDirty = template
     ? JSON.stringify(state) !== JSON.stringify(getDefaults(template, post))
     : false;
+
+  // What a newly-inserted sticker/badge/shape renders in until the user picks
+  // its own colour — same fallback chain CustomizePanel uses for the element
+  // currently selected.
+  const accent = String(state.values.accentColor ?? template?.previewColor ?? sp.textSecondary);
 
   const title = "Edit Media";
 
@@ -435,9 +498,14 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
             {activeTab === "templates" ? (
               <TemplatePanel activeTemplateId={template?.id ?? null} onSelect={handleSelect} />
             ) : activeTab === "shape" ? (
-              <ComingSoonPanel label="Shape" body="Browsing and inserting shapes here is coming soon — for now, add one from the Shape section in Customize." />
+              <ElementsPanel
+                template={template}
+                accent={accent}
+                onInsertBadge={handleAddBadge}
+                onInsertShape={handleAddShape}
+              />
             ) : (
-              <ComingSoonPanel label="Text" body="Text layers are not available yet." />
+              <ComingSoonPanel label="Text" body="Text layers are coming soon." />
             )}
 
             <MediaStage
@@ -473,7 +541,8 @@ export function EditMediaModal({ media, post, onClose, onSave }: Props) {
                 onSetStickerValue={handleSetStickerValue}
                 onSetFrameVariant={handleSetFrameVariant}
                 onSetColorOverride={handleSetColorOverride}
-                onAddBadge={handleAddBadge}
+                onSetMotionFeel={handleSetMotionFeel}
+                onSetMotionType={handleSetMotionType}
                 onReset={handleReset}
                 onShuffle={handleShuffle}
                 canReset={isDirty}

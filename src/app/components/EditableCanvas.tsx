@@ -71,6 +71,7 @@ export function EditableCanvas({
   previewFrame = null,
   onCancelPreview,
   onEmptyClick,
+  soloId = null,
 }: {
   template: TemplateDef;
   state: TemplateState;
@@ -92,6 +93,10 @@ export function EditableCanvas({
   /** A click that hit no element while static — starts playback, so an empty
    *  canvas click is part of the same play/pause gesture as the padding. */
   onEmptyClick?: () => void;
+  /** During preview, only this element plays the entrance; every other
+   *  element stays on the settled last frame. Used when previewing a single
+   *  element's own Motion change rather than the whole post replaying. */
+  soloId?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef<{ id: string; at: number } | null>(null);
@@ -159,7 +164,17 @@ export function EditableCanvas({
       // gesture. Layers stay hit-testable throughout playback (see
       // `interactive` below) specifically so this can happen in one click
       // instead of one to pause and a second to select.
+      //
+      // A *solo* preview is the exception: it auto-started on its own as a
+      // side effect of a Motion edit, not from a deliberate play gesture, so
+      // an empty-canvas click to move on reads as "show me the finished
+      // post," not "stop and go back to editing" — cancelling it here left
+      // the canvas silently settled until a second click actually played it.
       if (previewing) {
+        if (!target && soloId) {
+          onEmptyClick?.();
+          return;
+        }
         onCancelPreview?.();
         onSelect(target ? target.dataset.layerId! : null);
         if (!target) setEditingId(null);
@@ -207,7 +222,7 @@ export function EditableCanvas({
         startY: pos.y,
       });
     },
-    [previewing, onCancelPreview, onEmptyClick, dismissHint, onSelect, state, template.layers],
+    [previewing, soloId, onCancelPreview, onEmptyClick, dismissHint, onSelect, state, template.layers],
   );
 
   const handlePointerMove = useCallback(
@@ -306,7 +321,11 @@ export function EditableCanvas({
 
   const selectedLayer = selectedId ? template.layers.find((l) => l.id === selectedId) : null;
   const selectedExtra = selectedId ? state.extras.find((e) => e.id === selectedId) : null;
-  const selectedIsText = selectedLayer?.kind === "text" || selectedExtra?.kind === "text";
+  // A badge-style chip ("FLASH SALE") shrinks to its own content just like a
+  // sticker — it never wraps, so the width-drag handle (for reflowing a
+  // wrapping paragraph) has nothing to do and shouldn't show.
+  const selectedIsChip = Boolean(selectedLayer?.frameVariants) || (selectedExtra?.kind === "text" && selectedExtra.frameVariant !== undefined);
+  const selectedIsText = (selectedLayer?.kind === "text" || selectedExtra?.kind === "text") && !selectedIsChip;
   const selectedCanEdit = selectedLayer ? Boolean(inlineField(selectedLayer)) : selectedExtra?.kind === "text";
   const selectedTextWidth =
     (selectedLayer ? state.layers[selectedLayer.id]?.textWidth : undefined) ??
@@ -331,6 +350,14 @@ export function EditableCanvas({
         overflow: "hidden",
         cursor: drag ? "grabbing" : "default",
         touchAction: "none",
+        // Without this, dragging an element (a pointer-down-then-move over
+        // its text) is indistinguishable from a native text-selection drag —
+        // the browser highlights every run of text sharing that drag path
+        // across the canvas. Native selection inside the inline-edit
+        // textarea (rendered below) is unaffected — form controls manage
+        // their own text selection regardless of an ancestor's user-select.
+        userSelect: "none",
+        WebkitUserSelect: "none",
       }}
     >
       <div
@@ -352,6 +379,7 @@ export function EditableCanvas({
           fps={template.fps}
           width={template.width}
           height={template.height}
+          soloId={previewing ? soloId : null}
           // Always hit-testable, even mid-loop: a click during playback needs
           // to resolve to the exact element it landed on so pausing and
           // selecting happen in the same gesture (see handlePointerDown).

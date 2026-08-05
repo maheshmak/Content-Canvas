@@ -9,11 +9,14 @@ import type { SpringFeel } from "../templates/schema";
  * default (any element can override it), named by how it moves rather than by
  * stiffness/damping numbers the user should never have to think about.
  */
+// "None" isn't offered here — Entrance already has its own "None" (no motion
+// at all), and having two independent switches that could each unilaterally
+// kill motion was exactly what made the pair confusing. Feel only ever
+// describes *how* a motion that's actually happening moves.
 export const FEEL_OPTIONS: { value: SpringFeel; label: string }[] = [
   { value: "spatial", label: "Bouncy" },
   { value: "gentle", label: "Gentle" },
   { value: "snappy", label: "Snappy" },
-  { value: "none", label: "None" },
 ];
 
 const KNOWN: SpringFeel[] = ["spatial", "gentle", "snappy", "none"];

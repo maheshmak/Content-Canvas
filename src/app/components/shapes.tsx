@@ -150,7 +150,9 @@ const RAW: { id: string; label: string; gen: () => Pt[] }[] = [
   { id: "pixel-triangle", label: "Pixel triangle", gen: () => fromRadius(polygonR(3, 0.02, Math.PI / 2)) },
   { id: "heart", label: "Heart", gen: heartRaw },
   { id: "star", label: "Star", gen: () => fromRadius(lobedR(5, 0.62, Math.PI / 2)) },
-  { id: "star-soft", label: "Soft star", gen: () => fromRadius(lobedR(5, 0.34, Math.PI / 2)) },
+  { id: "star-soft", label: "Soft star", gen: () => fromRadius(lobedR(5, 0.28, Math.PI / 2)) },
+  { id: "star-sharp", label: "Sharp star", gen: () => fromRadius(lobedR(5, 0.85, Math.PI / 2)) },
+  { id: "star-round", label: "Round star", gen: () => fromRadius(lobedR(5, 0.46, Math.PI / 2)) },
   { id: "pin", label: "Pin", gen: () => fromRadius(pinR()) },
 ];
 
