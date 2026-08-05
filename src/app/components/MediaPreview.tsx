@@ -1,9 +1,8 @@
-import { useRef, useState, useLayoutEffect } from "react";
+import { useRef, useState, useLayoutEffect, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
-import type { TemplateDef, FieldValues } from "../templates/schema";
+import type { Align, TemplateDef, TemplateState } from "../templates/schema";
 import { sp } from "../theme";
-import { FrameProvider, useFramePlayer } from "./AnimationPlayer";
-import type { EasingName } from "./AnimationPlayer";
+import { EditableCanvas } from "./EditableCanvas";
 
 export interface MediaItem {
   id: string;
@@ -13,69 +12,20 @@ export interface MediaItem {
 
 export type MediaType = "image" | "video";
 
-/** Media frame size from the design (node 5918:69156). */
-const MEDIA_W = 360;
-const MEDIA_H = 646;
-
 /**
- * Compositions are authored on their full export canvas (1080x1920) in absolute
- * pixels — 100px type, a 260px badge. They must render at that native size and
- * be scaled to the preview frame, the way a video player does.
+ * Preview frame, matching the compositions' 9:16 canvas exactly, so the preview
+ * is pixel-for-pixel what will export.
  */
-function ScaledComposition({
-  template,
-  fieldValues,
-  frame,
-  boxW,
-  boxH,
-}: {
-  template: TemplateDef;
-  fieldValues: FieldValues;
-  frame: number;
-  boxW: number;
-  boxH: number;
-}) {
-  if (!boxW || !boxH) return null;
-  const scale = Math.max(boxW / template.width, boxH / template.height);
-
-  return (
-    <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 2 }}>
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          width: `${template.width}px`,
-          height: `${template.height}px`,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-          transformOrigin: "center center",
-        }}
-      >
-        <FrameProvider
-          frame={frame}
-          fps={template.fps}
-          width={template.width}
-          height={template.height}
-          easing={(fieldValues.animationStyle as EasingName) ?? "ease-out"}
-        >
-          <template.component inputProps={fieldValues} />
-        </FrameProvider>
-      </div>
-    </div>
-  );
-}
+export const MEDIA_W = 360;
+export const MEDIA_H = 640;
 
 /**
- * Fits the media frame into whatever space the column has, at the design's
- * fixed 360:646 aspect ratio, never larger than 360x646.
+ * Fits the media frame into the available space at a fixed 9:16, never larger
+ * than the design size.
  *
- * The edge rule this enforces: the frame shrinks *as a whole* on small
- * viewports instead of letting flex layout squash its height. A squashed box
- * changes the aspect ratio, and the cover-scaled overlay then crops the canvas
- * top and bottom — cutting through composition content that sits well inside
- * its own safe margins. Keeping the ratio fixed means cover-scale is exact-fit
- * and nothing is ever clipped; the column's 16px padding stays intact around
- * the frame at every size.
+ * The frame shrinks as a whole on small viewports rather than letting flex
+ * squash its height — a squashed box changes the aspect ratio and crops content
+ * that sits well inside its own safe margins.
  */
 function FittedFrame({
   media,
@@ -103,7 +53,6 @@ function FittedFrame({
     };
   }, []);
 
-  // Largest 360:646 box that fits the available space, capped at design size.
   const w = Math.floor(Math.min(MEDIA_W, avail.w, (avail.h * MEDIA_W) / MEDIA_H));
   const h = Math.floor((w * MEDIA_H) / MEDIA_W);
 
@@ -122,6 +71,7 @@ function FittedFrame({
     >
       {w > 0 && h > 0 && (
         <div
+          data-frame
           style={{
             position: "relative",
             width: `${w}px`,
@@ -152,57 +102,164 @@ function FittedFrame({
 }
 
 /**
- * Video posts: the composition loops continuously. There is deliberately no
- * transport bar — it sat on top of the artwork and competed with it.
+ * The centre column.
+ *
+ * The canvas is always editable — click, drag, type straight away. There is
+ * no explicit Play/Pause control: playback is a gesture. Clicking any empty
+ * area — the padding around the frame, or empty canvas inside it — toggles
+ * playback; clicking an element always selects it (pausing first, if it was
+ * playing). Play is real spring motion computed by the same renderer the
+ * export uses, so what you preview is what you get.
  */
-function VideoPreview({
+
+export function MediaStage({
   media,
   template,
-  fieldValues,
-}: {
-  media: MediaItem;
-  template: TemplateDef;
-  fieldValues: FieldValues;
-}) {
-  const { frame } = useFramePlayer({
-    durationInFrames: template.durationInFrames,
-    fps: template.fps,
-    loop: true,
-  });
-
-  return (
-    <FittedFrame
-      media={media}
-      render={({ w, h }) => (
-        <ScaledComposition
-          template={template}
-          fieldValues={fieldValues}
-          frame={frame}
-          boxW={w}
-          boxH={h}
-        />
-      )}
-    />
-  );
-}
-
-/** Center column (node 5909:68171): 16px padding, media centred at 360 wide. */
-export function MediaPreview({
-  media,
-  template,
-  fieldValues,
-  mediaType,
+  state,
+  selectedId,
+  onSelect,
+  onMove,
+  onEditText,
+  onEditExtraText,
+  onToggleLayer,
+  onResizeText,
+  onDuplicate,
+  onDelete,
 }: {
   media: MediaItem;
   template: TemplateDef | null;
-  fieldValues: FieldValues;
-  mediaType: MediaType;
+  state: TemplateState;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  onMove: (id: string, x: number, y: number, align: Align) => void;
+  onEditText: (key: string, value: string | number) => void;
+  onEditExtraText: (id: string, text: string) => void;
+  onToggleLayer: (id: string) => void;
+  onResizeText: (id: string, textWidth: number) => void;
+  onDuplicate: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
+  const [previewFrame, setPreviewFrame] = useState<number | null>(null);
+  const [soloId, setSoloId] = useState<string | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  const stopPreview = useCallback(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    setPreviewFrame(null);
+    setSoloId(null);
+  }, []);
+
+  /** Loops indefinitely — the post plays on repeat until a click on the
+   *  canvas interrupts it (`stopPreview`), never settling into a single
+   *  static frame on its own. Pass `solo` to play only that one element's
+   *  entrance while everything else stays on its settled frame — used for
+   *  previewing a single element's own Motion change in isolation, rather
+   *  than replaying the whole post around it. `startFrame` skips the loop
+   *  ahead — soloing an element authored with a long stagger delay (it plays
+   *  well after frame 0 in the full post) otherwise meant watching a long
+   *  wait before anything happened; starting right at its own delay makes an
+   *  edit read as instant regardless of where it sits in the original
+   *  stagger. */
+  const play = useCallback((solo?: string | null, startFrame = 0) => {
+    if (!template) return;
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    const total = template.durationInFrames;
+    const fps = template.fps;
+    const startedAt = performance.now();
+    const tick = (now: number) => {
+      const elapsed = Math.floor(((now - startedAt) / 1000) * fps);
+      setPreviewFrame((elapsed + startFrame) % total);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    setSoloId(solo ?? null);
+    setPreviewFrame(startFrame % total);
+    rafRef.current = requestAnimationFrame(tick);
+  }, [template]);
+
+  // Choosing a template plays its motion straight away, on a loop — the modal
+  // opens on the finished thing, so the default is to watch it happen, not to
+  // be dropped straight into a static editor. A stale RAF from the previous
+  // template is stopped first so switching templates never ticks against old
+  // data.
+  useEffect(() => {
+    stopPreview();
+    if (template) play();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template?.id]);
+
+  // Changing the Motion setting mid-loop should read as an immediate change,
+  // not one that only shows up once the current cycle happens to wrap back to
+  // frame 0. Restart the loop from frame 0 right away, but only while a
+  // preview is actually running — a paused, settled frame has nothing to
+  // instantly reflect.
+  const isPreviewingRef = useRef(false);
+  isPreviewingRef.current = previewFrame != null;
+  useEffect(() => {
+    if (isPreviewingRef.current) play();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.values.animationStyle]);
+
+  // Motion is per-element now, and the edit canvas otherwise sits on the
+  // settled last frame — an entrance already finished has nothing to show,
+  // so picking a new Entrance or Feel for the selected element looked like
+  // it did nothing. Unlike the post-wide restart above, this one plays even
+  // from a paused state: there's no other way to see a per-element motion
+  // change land. Only fires for an actual value change on the *same*
+  // selection — switching to a different element (which naturally has a
+  // different signature) must not itself trigger a replay. Solos the replay
+  // to just that element: the rest of the post stays settled, so editing one
+  // element's motion isn't a whole-canvas replay to watch for the one part
+  // that changed.
+  const selectedMotionSignature = (() => {
+    if (!selectedId) return null;
+    const ls = state.layers[selectedId];
+    const extra = state.extras.find((e) => e.id === selectedId);
+    return `${ls?.motionFeel ?? ""}|${ls?.motionType ?? ""}|${extra?.motionFeel ?? ""}|${extra?.motionType ?? ""}`;
+  })();
+  const prevMotionRef = useRef<{ id: string | null; signature: string | null }>({ id: null, signature: null });
+  useEffect(() => {
+    const prev = prevMotionRef.current;
+    if (selectedId && prev.id === selectedId && prev.signature !== null && prev.signature !== selectedMotionSignature) {
+      const delay = template?.layers.find((l) => l.id === selectedId)?.motion.delay
+        ?? state.extras.find((e) => e.id === selectedId)?.motion.delay
+        ?? 0;
+      play(selectedId, delay);
+    }
+    prevMotionRef.current = { id: selectedId, signature: selectedMotionSignature };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selectedMotionSignature]);
+
+  // Clicks that land on the padding around the frame (not inside it — the
+  // frame and EditableCanvas handle their own clicks) toggle playback, same
+  // as an empty-canvas click does inside the frame. This is what makes "any
+  // area of the Canvas section" — padding included — part of the gesture. It
+  // also deselects, same as an empty-canvas click: without this, a selection
+  // could only ever be cleared by a click that happened to land inside the
+  // frame, leaving Customize stuck showing the last-selected element's
+  // controls after a click anywhere else on the stage.
+  const handleStagePointerDown = (e: React.PointerEvent) => {
+    if (!template) return;
+    if ((e.target as HTMLElement).closest("[data-frame]")) return;
+    onSelect(null);
+    // A solo preview auto-started from a Motion edit, not a deliberate play
+    // gesture — moving on from it should show the finished post playing, not
+    // silently stop (the ordinary toggle below is for a real play/pause click).
+    if (soloId) { play(); return; }
+    if (previewFrame != null) stopPreview();
+    else play();
+  };
+
   return (
     <div
+      onPointerDown={handleStagePointerDown}
       style={{
         flex: 1,
-        minWidth: 0,
+        // Never let the canvas collapse. The side panels are fixed width, so a
+        // flexible centre column shrinks to nothing on a narrow viewport and the
+        // media disappears — the card scrolls instead, which is the same
+        // never-clip rule the frame itself follows.
+        minWidth: `${MEDIA_W}px`,
         height: "100%",
         display: "flex",
         flexDirection: "column",
@@ -211,34 +268,36 @@ export function MediaPreview({
         gap: "16px",
         padding: "16px",
         background: sp.white,
+        position: "relative",
       }}
     >
-      {template && mediaType === "video" ? (
-        <VideoPreview
-          key={template.id}
-          media={media}
-          template={template}
-          fieldValues={fieldValues}
-        />
-      ) : (
-        <FittedFrame
-          media={media}
-          render={({ w, h }) =>
-            template ? (
-              // Image posts hold the last frame, where every interpolation has
-              // settled, giving the finished composed look.
-              <ScaledComposition
-                key={template.id}
-                template={template}
-                fieldValues={fieldValues}
-                frame={template.durationInFrames - 1}
-                boxW={w}
-                boxH={h}
-              />
-            ) : null
-          }
-        />
-      )}
+      <FittedFrame
+        media={media}
+        render={({ w, h }) => {
+          if (!template) return null;
+          return (
+            <EditableCanvas
+              template={template}
+              state={state}
+              boxW={w}
+              boxH={h}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              onMove={onMove}
+              onEditText={onEditText}
+              onEditExtraText={onEditExtraText}
+              onToggleLayer={onToggleLayer}
+              onResizeText={onResizeText}
+              onDuplicate={onDuplicate}
+              onDelete={onDelete}
+              previewFrame={previewFrame}
+              onCancelPreview={stopPreview}
+              onEmptyClick={() => play()}
+              soloId={soloId}
+            />
+          );
+        }}
+      />
     </div>
   );
 }

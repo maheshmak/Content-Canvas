@@ -3,24 +3,18 @@ import { templates } from "../templates/index";
 import { sp, FONT } from "../theme";
 import { TabLabel } from "./TabLabel";
 
-// Per-template emoji, matching the design frame.
-const TEMPLATE_EMOJI: Record<string, string> = {
-  "five-star-rating": "🌟",
-  "summer-sale": "☀️",
-  "transformation": "🔄",
-  "grand-opening": "🥳",
-  "service-highlight": "✂️",
-  "pro-tip": "💡",
-  "find-us": "📍",
-};
+/** Glance icon size. */
+const THUMB = 24;
 
 /**
- * Row per node 5909:69103 — 16px padding, 8px gap, radius 4, white fill.
- * Selection is carried entirely by the border colour: border/input-active
- * (#89B9FF) when selected, border/secondary (#F2F2F2) otherwise. The label does
- * not change weight or colour.
+ * A bare icon, rather than a live-rendered crop of the template applied to
+ * the post's photo. At list size a cropped 9:16 composition reads as noise —
+ * the badge, the text, the confetti all blur into an indistinct smear of the
+ * same photo repeated six times. A tinted background tile was a step in the
+ * right direction but still competed with the name for attention; the emoji
+ * alone is legible and quiet enough to sit beside it.
  */
-function TemplateRow({
+function TemplateThumb({
   template,
   isActive,
   onSelect,
@@ -34,31 +28,41 @@ function TemplateRow({
       type="button"
       onClick={onSelect}
       aria-pressed={isActive}
+      title={template.name}
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "8px",
-        width: "100%",
-        padding: "16px",
-        borderRadius: "4px",
-        border: `1px solid ${isActive ? sp.borderActive : sp.borderSub}`,
-        // Selected rows take surface/primary; resting rows stay white.
-        background: isActive ? sp.bg : sp.white,
+        gap: "10px",
+        padding: "4px",
+        border: "none",
+        borderRadius: "6px",
+        background: isActive ? sp.bg : "none",
         cursor: "pointer",
         textAlign: "left",
         fontFamily: FONT,
-        flexShrink: 0,
+        width: "100%",
       }}
     >
-      <span style={{ fontSize: "16px", lineHeight: "20px", flexShrink: 0 }}>
-        {TEMPLATE_EMOJI[template.id] ?? "📄"}
-      </span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: `${THUMB}px`,
+          height: `${THUMB}px`,
+          flexShrink: 0,
+          fontSize: "16px",
+          lineHeight: 1,
+        }}
+      >
+        {template.icon}
+      </div>
       <span
         style={{
-          fontSize: "14px",
+          fontSize: "13px",
           lineHeight: "18px",
           fontWeight: 400,
-          color: sp.textPrimary,
+          color: isActive ? sp.textPrimary : sp.textSecondary,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -107,17 +111,18 @@ export function TemplatePanel({
       </div>
 
       <div
+        className="scroll-area"
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
-          gap: "8px",
+          gap: "2px",
         }}
       >
         {templates.map((t) => (
-          <TemplateRow
+          <TemplateThumb
             key={t.id}
             template={t}
             isActive={t.id === activeTemplateId}

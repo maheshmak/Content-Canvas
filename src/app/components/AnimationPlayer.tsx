@@ -1,85 +1,67 @@
-import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
-import type { ReactNode } from "react";
+import { Easing, interpolate, spring } from "remotion";
+import type { SpringFeel } from "../templates/schema";
 
 /**
- * Animation style. Applied to the normalised progress inside every
- * interpolation, so one setting restyles a whole template without any
- * composition needing to know about it.
+ * How elements enter the frame — Material 3 Expressive motion physics.
+ *
+ * Entrances are driven by real springs, not eased curves, so they settle with a
+ * physical overshoot instead of stopping dead. The *feel* is one post-wide
+ * default (any element can override it), named by how it moves rather than by
+ * stiffness/damping numbers the user should never have to think about.
  */
-export type EasingName = "linear" | "ease-in" | "ease-out" | "ease-in-out" | "bouncy";
-
-export const EASING_OPTIONS: { value: EasingName; label: string }[] = [
-  { value: "ease-out", label: "Ease out" },
-  { value: "ease-in", label: "Ease in" },
-  { value: "ease-in-out", label: "Ease in out" },
-  { value: "bouncy", label: "Bouncy" },
-  { value: "linear", label: "Linear" },
+// "None" isn't offered here — Entrance already has its own "None" (no motion
+// at all), and having two independent switches that could each unilaterally
+// kill motion was exactly what made the pair confusing. Feel only ever
+// describes *how* a motion that's actually happening moves.
+export const FEEL_OPTIONS: { value: SpringFeel; label: string }[] = [
+  { value: "spatial", label: "Bouncy" },
+  { value: "gentle", label: "Gentle" },
+  { value: "snappy", label: "Snappy" },
 ];
 
-const BACK = 1.70158;
+const KNOWN: SpringFeel[] = ["spatial", "gentle", "snappy", "none"];
 
-export const EASINGS: Record<EasingName, (t: number) => number> = {
-  "linear": (t) => t,
-  "ease-in": (t) => t * t * t,
-  "ease-out": (t) => 1 - Math.pow(1 - t, 3),
-  "ease-in-out": (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
-  // Overshoots past 1 before settling — the "bouncy" feel.
-  "bouncy": (t) => 1 + (BACK + 1) * Math.pow(t - 1, 3) + BACK * Math.pow(t - 1, 2),
+/** Old easing-based style names map forward onto the nearest spring feel. */
+const LEGACY_STYLE_MAP: Record<string, SpringFeel> = {
+  "slide-up": "spatial",
+  fade: "gentle",
+  pop: "snappy",
+  bounce: "spatial",
+  zoom: "snappy",
+  "smooth-rise": "spatial",
+  "quick-pop": "snappy",
+  "soft-fade": "gentle",
+  drift: "gentle",
 };
 
-interface FrameContextValue {
-  frame: number;
-  fps: number;
-  width: number;
-  height: number;
-  easing: EasingName;
+export const DEFAULT_FEEL: SpringFeel = "spatial";
+
+export function normalizeFeel(style: string | undefined): SpringFeel {
+  if (style && KNOWN.includes(style as SpringFeel)) return style as SpringFeel;
+  if (style && LEGACY_STYLE_MAP[style]) return LEGACY_STYLE_MAP[style];
+  return DEFAULT_FEEL;
 }
 
-const FrameContext = createContext<FrameContextValue>({
-  frame: 0,
-  fps: 30,
-  width: 1080,
-  height: 1920,
-  easing: "ease-out",
-});
-
-export function useCurrentFrame(): number {
-  return useContext(FrameContext).frame;
-}
-
-export function useVideoConfig() {
-  const { fps, width, height } = useContext(FrameContext);
-  return { fps, width, height };
-}
+/** Spring configs, each a distinct physical character. */
+const SPRING_CONFIG: Record<Exclude<SpringFeel, "none">, { damping: number; mass: number; stiffness: number }> = {
+  // Visible overshoot — the tactile M3E "spatial" spring.
+  spatial: { damping: 12, mass: 1, stiffness: 130 },
+  // Overdamped: rises smoothly and settles with no bounce.
+  gentle: { damping: 40, mass: 1, stiffness: 150 },
+  // Fast, with just a hint of overshoot.
+  snappy: { damping: 18, mass: 0.7, stiffness: 300 },
+};
 
 /**
- * Supplies the current frame to a composition. Compositions are pure functions
- * of this frame, so the same provider drives both a still (image posts, held at
- * a fixed frame) and playback (video posts).
+ * Entrance progress 0 → 1 (may briefly exceed 1 for springs that overshoot).
+ * Feeds transforms directly, so the overshoot reads as a settle, not a stop.
  */
-export function FrameProvider({
-  frame,
-  fps,
-  width,
-  height,
-  easing,
-  children,
-}: FrameContextValue & { children: ReactNode }) {
-  return (
-    <FrameContext.Provider value={{ frame, fps, width, height, easing }}>
-      {children}
-    </FrameContext.Provider>
-  );
+export function enterProgress(frame: number, fps: number, feel: SpringFeel, delay: number): number {
+  if (feel === "none") return frame >= delay ? 1 : 0;
+  return spring({ frame, fps, delay, config: SPRING_CONFIG[feel] });
 }
 
-/**
- * Piecewise linear interpolation across an arbitrary number of stops.
- *
- * Multi-point ranges matter: several compositions describe a there-and-back
- * pulse as `interpolate(frame % 60, [0, 30, 60], [1, 1.06, 1])`. A two-point
- * implementation silently drops the third stop and clamps at the peak, so the
- * pulse ramps up and sticks instead of easing back.
- */
+
 export type Interpolate = (
   frame: number,
   inputRange: number[],
@@ -88,138 +70,22 @@ export type Interpolate = (
 ) => number;
 
 /**
- * Returns an `interpolate` bound to the template's animation style.
- *
- * Compositions call this instead of importing `interpolate` directly, so
- * changing the style field restyles every animation in the template without a
- * single call site changing shape.
+ * A clamped, ease-out interpolate for the bespoke frame animations inside custom
+ * artwork (staggered stars, a badge pulse, a bobbing pin). These are internal
+ * loops and staggers, not the element's entrance — the entrance is the spring
+ * above, applied to the whole layer by `LayerCanvas`.
  */
-export function useInterpolate(): Interpolate {
-  const { easing } = useContext(FrameContext);
-  const ease = EASINGS[easing] ?? EASINGS["ease-out"];
+export function createInterpolate(feel?: string): Interpolate {
+  // "None" feel → internal micro-animations (star staggers, badge pulses) are
+  // fully settled from the first frame, matching the static entrance.
+  if (feel === "none") {
+    return (_frame, _inputRange, outputRange) => outputRange[outputRange.length - 1];
+  }
   return (frame, inputRange, outputRange, options) =>
-    interpolate(frame, inputRange, outputRange, { ...options, ease });
-}
-
-export function interpolate(
-  frame: number,
-  inputRange: number[],
-  outputRange: number[],
-  options?: {
-    extrapolateLeft?: "clamp" | "extend";
-    extrapolateRight?: "clamp" | "extend";
-    ease?: (t: number) => number;
-  }
-): number {
-  if (inputRange.length < 2 || inputRange.length !== outputRange.length) {
-    throw new Error("interpolate: inputRange and outputRange must be the same length (>= 2)");
-  }
-
-  const extrapolateLeft = options?.extrapolateLeft ?? "clamp";
-  const extrapolateRight = options?.extrapolateRight ?? "clamp";
-  const last = inputRange.length - 1;
-
-  if (frame <= inputRange[0]) {
-    if (frame === inputRange[0] || extrapolateLeft === "clamp") return outputRange[0];
-    const t = (frame - inputRange[0]) / (inputRange[1] - inputRange[0]);
-    return outputRange[0] + (outputRange[1] - outputRange[0]) * t;
-  }
-
-  if (frame >= inputRange[last]) {
-    if (frame === inputRange[last] || extrapolateRight === "clamp") return outputRange[last];
-    const t = (frame - inputRange[last - 1]) / (inputRange[last] - inputRange[last - 1]);
-    return outputRange[last - 1] + (outputRange[last] - outputRange[last - 1]) * t;
-  }
-
-  const ease = options?.ease;
-  for (let i = 0; i < last; i++) {
-    if (frame >= inputRange[i] && frame <= inputRange[i + 1]) {
-      const span = inputRange[i + 1] - inputRange[i];
-      const t = span === 0 ? 0 : (frame - inputRange[i]) / span;
-      const eased = ease ? ease(t) : t;
-      return outputRange[i] + (outputRange[i + 1] - outputRange[i]) * eased;
-    }
-  }
-
-  return outputRange[last];
-}
-
-/**
- * Drives a frame counter off requestAnimationFrame.
- *
- * Note rAF is throttled to zero in a backgrounded tab, so playback only
- * advances while the page is actually visible.
- */
-export function useFramePlayer({
-  durationInFrames,
-  fps,
-  loop = true,
-  enabled = true,
-}: {
-  durationInFrames: number;
-  fps: number;
-  loop?: boolean;
-  enabled?: boolean;
-}) {
-  const [frame, setFrame] = useState(0);
-  const [playing, setPlaying] = useState(true);
-  const rafRef = useRef<number | null>(null);
-  const lastTimeRef = useRef<number | null>(null);
-  const frameRef = useRef(0);
-  const playingRef = useRef(true);
-
-  useEffect(() => { playingRef.current = playing; }, [playing]);
-
-  const tick = useCallback((now: number) => {
-    if (!playingRef.current) return;
-    if (lastTimeRef.current === null) lastTimeRef.current = now;
-    const elapsed = now - lastTimeRef.current;
-    const frameDuration = 1000 / fps;
-    if (elapsed >= frameDuration) {
-      const framesToAdvance = Math.floor(elapsed / frameDuration);
-      lastTimeRef.current = now - (elapsed % frameDuration);
-      frameRef.current += framesToAdvance;
-      if (frameRef.current >= durationInFrames) {
-        if (loop) {
-          frameRef.current = frameRef.current % durationInFrames;
-        } else {
-          frameRef.current = durationInFrames - 1;
-          setPlaying(false);
-        }
-      }
-      setFrame(frameRef.current);
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  }, [fps, durationInFrames, loop]);
-
-  useEffect(() => {
-    if (enabled && playing) {
-      lastTimeRef.current = null;
-      rafRef.current = requestAnimationFrame(tick);
-    } else if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [enabled, playing, tick]);
-
-  const toggle = useCallback(() => setPlaying((p) => !p), []);
-
-  const restart = useCallback(() => {
-    frameRef.current = 0;
-    setFrame(0);
-    lastTimeRef.current = null;
-    setPlaying(true);
-  }, []);
-
-  const seek = useCallback((f: number) => {
-    frameRef.current = f;
-    setFrame(f);
-    lastTimeRef.current = null;
-    setPlaying(false);
-  }, []);
-
-  return { frame, playing, toggle, restart, seek };
+    interpolate(frame, inputRange, outputRange, {
+      easing: Easing.out(Easing.cubic),
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      ...options,
+    });
 }

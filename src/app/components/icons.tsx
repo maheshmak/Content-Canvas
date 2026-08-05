@@ -39,11 +39,54 @@ export function TemplatesIcon({ width = 32, height = 32, ...props }: IconProps) 
   );
 }
 
+/** Overlapping circle + square — stands in for "shapes/stickers" until a
+ *  matching glyph ships from the design file. */
+export function ShapesIcon({ width = 32, height = 32, ...props }: IconProps) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 32 32" fill="none" aria-hidden {...props}>
+      <rect x="9" y="9" width="12" height="12" rx="2" fill="currentColor" opacity="0.55" />
+      <circle cx="19.5" cy="19.5" r="6.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 /** BaseSecurityRegenerate */
 export function ResetIcon({ width = 32, height = 32, ...props }: IconProps) {
   return (
     <svg width={width} height={height} viewBox="0 0 32 32" fill="none" aria-hidden {...props}>
       <path d="M16.0001 23.916C15.0172 23.916 14.0963 23.73 13.2374 23.3582C12.3783 22.9864 11.6294 22.4811 10.9905 21.8422C10.3516 21.2033 9.84626 20.4544 9.47446 19.5953C9.10265 18.7364 8.91675 17.8155 8.91675 16.8326C8.91675 16.6553 8.97661 16.5068 9.09633 16.3872C9.21591 16.2675 9.36439 16.2076 9.54175 16.2076C9.71911 16.2076 9.86758 16.2675 9.98716 16.3872C10.1069 16.5068 10.1667 16.6553 10.1667 16.8326C10.1667 18.4576 10.7327 19.8361 11.8647 20.968C12.9966 22.1 14.3751 22.666 16.0001 22.666C17.6251 22.666 19.0036 22.1 20.1355 20.968C21.2674 19.8361 21.8334 18.4576 21.8334 16.8326C21.8334 15.2076 21.2674 13.8291 20.1355 12.6972C19.0036 11.5653 17.6251 10.9993 16.0001 10.9993H15.7788L16.6636 11.8839C16.7875 12.0079 16.8486 12.153 16.847 12.3191C16.8454 12.4852 16.7843 12.6328 16.6636 12.762C16.5343 12.8913 16.3858 12.9581 16.218 12.9624C16.0504 12.9667 15.9019 12.9042 15.7726 12.7749L13.8992 10.8935C13.7486 10.7429 13.6732 10.5672 13.6732 10.3664C13.6732 10.1654 13.7486 9.98963 13.8992 9.83908L15.7886 7.95762C15.9125 7.83373 16.0597 7.77255 16.2301 7.77408C16.4005 7.77574 16.5504 7.84123 16.6797 7.97053C16.8004 8.0997 16.8629 8.24602 16.8672 8.40949C16.8713 8.57296 16.8088 8.71935 16.6797 8.84866L15.7788 9.74928H16.0001C16.983 9.74928 17.9039 9.93519 18.7628 10.307C19.6218 10.6788 20.3708 11.1841 21.0097 11.823C21.6486 12.4619 22.1539 13.2109 22.5257 14.0699C22.8975 14.9288 23.0834 15.8497 23.0834 16.8326C23.0834 17.8155 22.8975 18.7364 22.5257 19.5953C22.1539 20.4544 21.6486 21.2033 21.0097 21.8422C20.3708 22.4811 19.6218 22.9864 18.7628 23.3582C17.9039 23.73 16.983 23.916 16.0001 23.916Z" fill="currentColor"/>
+    </svg>
+  );
+}
+
+/** Layer visibility — shared by the panel's layer list and the canvas's selection toolbar. */
+export function EyeIcon({ off = false, width = 18, height = 18, ...props }: IconProps & { off?: boolean }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden {...props}>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="M3 3l18 18" strokeLinecap="round" />}
+    </svg>
+  );
+}
+
+/** Edit-text glyph for the canvas selection toolbar. */
+export function PencilIcon({ width = 16, height = 16, ...props }: IconProps) {
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      {...props}
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </svg>
   );
 }

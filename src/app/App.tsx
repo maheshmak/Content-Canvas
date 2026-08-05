@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { TemplateDef, FieldValues } from "./templates/schema";
+import type { TemplateDef, TemplateState, PostCopy } from "./templates/schema";
 import { EditMediaModal } from "./components/EditMediaModal";
 import type { MediaItem, MediaType } from "./components/MediaPreview";
 import { sp, FONT } from "./theme";
@@ -11,12 +11,23 @@ import imgHeadphones from "@/assets/headphones.png";
 const MEDIA: MediaItem = { id: "1", src: imgHeadphones, alt: "Man with headphones" };
 const MEDIA_TYPE: MediaType = "video";
 
+/**
+ * Copy the AI already wrote for this post, upstream in the content canvas.
+ * Templates bind their main line to this, so the editor never asks the user to
+ * write something that already exists. Hardcoded here as a stand-in.
+ */
+const POST: PostCopy = {
+  headline: "Limited edition release",
+  hook: "The best pieces sell out in hours",
+  cta: "Let's Go",
+};
+
 export default function App() {
   const [open, setOpen] = useState(true);
 
-  const handleSave = (template: TemplateDef | null, fieldValues: FieldValues) => {
+  const handleSave = (template: TemplateDef | null, state: TemplateState) => {
     // Placeholder: the real app writes this back onto the post's media.
-    console.log("save", template?.id, fieldValues);
+    console.log("save", template?.id, state);
     setOpen(false);
   };
 
@@ -37,6 +48,7 @@ export default function App() {
           <EditMediaModal
             media={MEDIA}
             mediaType={MEDIA_TYPE}
+            post={POST}
             onClose={() => setOpen(false)}
             onSave={handleSave}
           />
