@@ -9,6 +9,7 @@ import { PlatformIcon } from "./PlatformIcon";
 import { AccountAvatar } from "./AccountAvatar";
 import { SparkleIcon } from "./icons";
 import { sp, space, radius, type, FONT } from "../theme";
+import { RING_CLASS, ringStyle } from "./litRing";
 
 /* Geometry from the Figma frame (7052:587293). The column is 392 with 16 of
    padding, so everything inside is 360 wide. */
@@ -91,27 +92,21 @@ export function PostColumn({
       }}
     >
     <section
-      // `cc-lit` animates the shadow; the inline value below is its static
-      // resting frame, standing in for reduced-motion (animation off).
-      className={focus === "active" ? "cc-focus cc-lit" : "cc-focus"}
+      // `cc-ring` spins the border's gradient; `ringStyle` below is the ring
+      // itself, and is still a ring with the animation off (reduced motion).
+      className={focus === "active" ? `cc-focus ${RING_CLASS}` : "cc-focus"}
       style={{
         width: "100%",
         boxSizing: "border-box",
-        padding: space[16],
         display: "flex",
         flexDirection: "column",
         gap: space[16],
         background: sp.white,
-        // The lit card. A ring plus a soft lift rather than a heavier border,
-        // so the card's own geometry never changes as focus moves along the
-        // row — the highlight is entirely outside the border box. The glow
-        // is mixed from the same colour as this border (`sp.borderActive`),
-        // not the more saturated `sp.blue` — see the note in index.css.
-        border: `1px solid ${focus === "active" ? sp.borderActive : sp.borderSub}`,
-        boxShadow:
-          focus === "active"
-            ? `0 0 4px 1px color-mix(in srgb, ${sp.borderActive} 35%, transparent), 0 2px 8px -2px color-mix(in srgb, ${sp.borderActive} 28%, transparent)`
-            : "none",
+        boxShadow: "none",
+        // The lit card. Its border becomes the rotating gradient ring, with
+        // the padding giving back what the thicker border takes — so the
+        // card's geometry never changes as focus moves along the row.
+        ...ringStyle(focus === "active"),
         opacity: focus === "queued" ? 0.55 : 1,
         borderRadius: radius[8],
       }}

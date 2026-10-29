@@ -6,6 +6,7 @@ import { describeBrand, parseBrandName } from "../brand/describeBrand";
 import { hasHistory, ANALYTICS_WINDOW_DAYS } from "../brand/fixtures";
 import { sp, space, radius, type, FONT } from "../theme";
 import { prefersReducedMotion } from "../motion";
+import { RING_CLASS, ringStyle } from "./litRing";
 import { TextArea } from "./ds";
 import { InfoIcon } from "./icons";
 import { AccountAvatar } from "./AccountAvatar";
@@ -204,27 +205,20 @@ export function BrandContextStep({
         fontFamily: FONT,
       }}
     >
-      {/* Single card modal container. The breathing glow the results screen
-          puts on its own actively-working card, here on the whole card while
-          `!seq.allLoaded`. Mixed from the same colour as the border it sits
-          against (`sp.borderActive`, not the more saturated `sp.blue`) —
-          two different blues never merged, however low the alpha; one
-          colour, softened, reads as the border's own light rather than a
-          separate smear next to it. */}
+      {/* Single card modal container. The same rotating gradient ring the
+          results screen puts on its own actively-working card, here on the
+          whole card while `!seq.allLoaded` — see `ringStyle`. */}
       <div
-        className={!seq.allLoaded ? "cc-lit" : undefined}
+        className={!seq.allLoaded ? RING_CLASS : undefined}
         style={{
           width: "640px",
           maxWidth: "100%",
           margin: "auto",
           background: sp.white,
-          border: `1px solid ${!seq.allLoaded ? sp.borderActive : sp.borderSub}`,
           borderRadius: radius[16],
-          padding: space[24],
           boxSizing: "border-box",
-          boxShadow: !seq.allLoaded
-            ? `0 0 4px 1px color-mix(in srgb, ${sp.borderActive} 35%, transparent), 0 2px 8px -2px color-mix(in srgb, ${sp.borderActive} 28%, transparent)`
-            : "none",
+          boxShadow: "none",
+          ...ringStyle(!seq.allLoaded, space[24]),
           transition: reduce ? undefined : "border-color 0.4s ease-out, box-shadow 0.4s ease-out",
           display: "flex",
           flexDirection: "column",

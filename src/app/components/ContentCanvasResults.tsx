@@ -14,6 +14,7 @@ import { PLATFORM_META } from "../brand/fixtures";
 import type { Reveal } from "./useStagedReveal";
 import { TOTAL_MS } from "./useStagedReveal";
 import { sp, space, radius, type, FONT } from "../theme";
+import { RING_CLASS, ringStyle } from "./litRing";
 
 /**
  * Step 3 — the results screen, built to the Figma frame (7052:587293), and the
@@ -116,7 +117,7 @@ export function ContentCanvasResults({
       <div style={{ display: "flex", flexDirection: "column", gap: space[24], padding: space[16] }}>
         {/* R1 — Idea (800) beside Schedule Post (502), gap 16. */}
         <div style={{ display: "flex", gap: space[16], alignItems: "stretch" }}>
-          <Panel title="Idea" flex={800}>
+          <Panel title="Idea" flex={800} lit={!reveal.ideaReady}>
             {/* Centred against the thumbnail: the four rows fill only the top
                 third of a 282 panel, and left-aligned to the top they read as
                 an unfinished page rather than a composed one. */}
@@ -374,10 +375,10 @@ export function ContentCanvasResults({
            read as a position in a queue instead of four separate flashes. */
         .cc-focus { transition: opacity 0.4s ease-out, border-color 0.4s ease-out, box-shadow 0.4s ease-out; }
         /* .cc-shimmer, .cc-spinner/@keyframes cc-spin, .cc-reveal,
-           .cc-ai-major/.cc-ai-minor, and .cc-lit — their keyframes,
+           .cc-ai-major/.cc-ai-minor, and .cc-ring — their keyframes,
            gradients and reduced-motion fallbacks — now live in
            src/styles/index.css, shared with the starting page's own
-           checklist, heading mark, and loading glow. */
+           checklist, heading mark, and loading ring. */
         @media (prefers-reduced-motion: reduce) {
           /* The sequencing stays — it reports what is finished and what is
              still running. Only the decoration goes. */
@@ -389,21 +390,34 @@ export function ContentCanvasResults({
   );
 }
 
-function Panel({ title, flex, action, children }: { title: string; flex: number; action?: ReactNode; children: ReactNode }) {
+function Panel({
+  title,
+  flex,
+  action,
+  lit = false,
+  children,
+}: {
+  title: string;
+  flex: number;
+  action?: ReactNode;
+  /** Wears the loading ring — the panel's contents are still being produced. */
+  lit?: boolean;
+  children: ReactNode;
+}) {
   return (
     <section
+      className={lit ? RING_CLASS : undefined}
       style={{
         flex: `${flex} 1 0`,
         minWidth: 0,
         maxHeight: `${PANEL_MAX_H}px`,
         overflow: "hidden",
         boxSizing: "border-box",
-        padding: space[16],
         display: "flex",
         flexDirection: "column",
         gap: space[8],
         background: sp.white,
-        border: `1px solid ${sp.borderSub}`,
+        ...ringStyle(lit),
         borderRadius: radius[8],
       }}
     >

@@ -140,49 +140,32 @@ body,
 }
 
 /*
- * The "actively working" glow — a card or panel breathes while whatever's
- * inside it is being produced.
+ * The loading card's rotating border — see `ringStyle` in
+ * src/app/components/litRing.ts for the gradient itself.
  *
- * A prior version was cut for reading as "too much" and "not merging with
- * the border" — and the actual bug was exactly that second phrase: the glow
- * was mixed from `--sp-blue`, the saturated brand blue used for buttons and
- * links, while the border it sits against uses `--sp-border-input-active`,
- * a much softer pastel blue. Two different blues never blend, no matter how
- * low the alpha — the glow read as a foreign colour laid over the border
- * rather than light coming off it. Mixed from the *same* variable as the
- * border here, so the halo is the border's own colour, just softened and
- * spread — which is what actually reads as one thing breathing, not two
- * things arguing.
- *
- * The two mixed colours are computed once, as custom properties on `.cc-lit`
- * itself, rather than inline inside the keyframes. This build's CSS
- * minifier (Tailwind v4's Lightning CSS, via `@tailwindcss/vite`) silently
- * empties any `@keyframes` block that contains a `color-mix()` call directly
- * — the shipped bundle had `@keyframes cc-lit{}`, nothing inside it. The
- * animation still ran, it just had no frames to animate to, which is why
- * this looked flat/static once deployed despite working locally in dev.
- * Keeping `color-mix()` out of the keyframes entirely — computed here on
- * `.cc-lit`, referenced inside the keyframes as a plain `var()` — sidesteps
- * whatever this minifier is doing; confirmed by rebuilding and grepping the
- * shipped CSS for the actual keyframe bodies.
+ * `@property` is what makes this work: an unregistered custom property has no
+ * type, so the browser can't interpolate it and the angle would snap from 0 to
+ * 360 with nothing between. Registered as an `<angle>`, it animates smoothly.
+ * The keyframe holds a plain angle, nothing the minifier needs to evaluate:
+ * this build's CSS minifier (Lightning CSS, via `@tailwindcss/vite`) silently
+ * empties any `@keyframes` block containing a `color-mix()` call, which is
+ * what the previous breathing glow on these cards had to work around.
  */
-.cc-lit {
-  --cc-lit-rest-near: color-mix(in srgb, var(--sp-border-input-active) 35%, transparent);
-  --cc-lit-rest-far: color-mix(in srgb, var(--sp-border-input-active) 28%, transparent);
-  --cc-lit-peak-near: color-mix(in srgb, var(--sp-border-input-active) 55%, transparent);
-  --cc-lit-peak-far: color-mix(in srgb, var(--sp-border-input-active) 40%, transparent);
-  animation: cc-lit 2.8s ease-in-out infinite;
+@property --cc-ring-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
 }
-@keyframes cc-lit {
-  0%, 100% {
-    box-shadow: 0 0 4px 1px var(--cc-lit-rest-near), 0 2px 8px -2px var(--cc-lit-rest-far);
-  }
-  50% {
-    box-shadow: 0 0 7px 2px var(--cc-lit-peak-near), 0 3px 10px -2px var(--cc-lit-peak-far);
-  }
+@keyframes cc-ring-spin {
+  to { --cc-ring-angle: 360deg; }
+}
+.cc-ring {
+  animation: cc-ring-spin 10s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .cc-lit {
+  /* Still a ring — the highlight itself says where the work is — it just
+     stops going round. */
+  .cc-ring {
     animation: none;
   }
 }
