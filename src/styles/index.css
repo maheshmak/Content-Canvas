@@ -52,3 +52,137 @@ body,
   background: rgba(0, 0, 0, 0.38);
   background-clip: padding-box;
 }
+
+/*
+ * Shimmer skeleton — a stand-in for content not fetched yet.
+ *
+ * Global rather than scoped to one component: it started inside the results
+ * screen's own <style> block, but the starting page needs the identical
+ * treatment for its own initial fetch (brand description, accounts, post
+ * ideas), and two copies of the same three rules is how they quietly drift.
+ */
+@keyframes cc-shimmer {
+  to { background-position: -200% 0; }
+}
+.cc-shimmer {
+  background: linear-gradient(90deg, var(--sp-track) 0%, var(--sp-surface-2) 50%, var(--sp-track) 100%);
+  background-size: 200% 100%;
+  animation: cc-shimmer 1.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-shimmer {
+    animation: none;
+    background: var(--sp-track);
+  }
+}
+
+/*
+ * Step-status marker — the spinning ring for "in progress" and the fade-in
+ * for a value that just resolved.
+ *
+ * Hoisted for the same reason .cc-shimmer above was: it started in the
+ * results screen's own <style> block, but the starting page's own checklist
+ * (About your brand / Accounts / Post ideas) needs the identical marker, and
+ * two copies of the same rules is how they quietly drift.
+ */
+@keyframes cc-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes cc-reveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.cc-spinner {
+  animation: cc-spin 0.9s linear infinite;
+}
+.cc-reveal {
+  animation: cc-reveal 0.28s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-spinner,
+  .cc-reveal {
+    animation: none;
+  }
+}
+
+/*
+ * The AI mark's twinkle — a sparkle catching the light, rather than a wheel
+ * going round. The two points run out of phase, one flaring as the other
+ * fades, which is what reads as sparkle instead of a shape being shaken.
+ *
+ * Hoisted for the same reason as everything above: it started as the results
+ * screen's own decoration for its progress toast, but the starting page's
+ * heading mark needs the identical twinkle while its own fetch is running.
+ */
+@keyframes cc-ai-major {
+  0%, 100% { transform: scale(0.84) rotate(0deg); opacity: 0.7; }
+  45% { transform: scale(1.3) rotate(18deg); opacity: 1; }
+}
+@keyframes cc-ai-minor {
+  0%, 100% { transform: scale(0.4) rotate(-24deg); opacity: 0.25; }
+  40% { transform: scale(1.4) rotate(12deg); opacity: 1; }
+}
+.cc-ai-major, .cc-ai-minor {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.cc-ai-major {
+  animation: cc-ai-major 1.4s ease-in-out infinite;
+}
+.cc-ai-minor {
+  animation: cc-ai-minor 1.4s ease-in-out infinite 0.55s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-ai-major,
+  .cc-ai-minor {
+    animation: none;
+  }
+}
+
+/*
+ * The "actively working" glow — a card or panel breathes while whatever's
+ * inside it is being produced.
+ *
+ * A prior version was cut for reading as "too much" and "not merging with
+ * the border" — and the actual bug was exactly that second phrase: the glow
+ * was mixed from `--sp-blue`, the saturated brand blue used for buttons and
+ * links, while the border it sits against uses `--sp-border-input-active`,
+ * a much softer pastel blue. Two different blues never blend, no matter how
+ * low the alpha — the glow read as a foreign colour laid over the border
+ * rather than light coming off it. Mixed from the *same* variable as the
+ * border here, so the halo is the border's own colour, just softened and
+ * spread — which is what actually reads as one thing breathing, not two
+ * things arguing.
+ *
+ * The two mixed colours are computed once, as custom properties on `.cc-lit`
+ * itself, rather than inline inside the keyframes. This build's CSS
+ * minifier (Tailwind v4's Lightning CSS, via `@tailwindcss/vite`) silently
+ * empties any `@keyframes` block that contains a `color-mix()` call directly
+ * — the shipped bundle had `@keyframes cc-lit{}`, nothing inside it. The
+ * animation still ran, it just had no frames to animate to, which is why
+ * this looked flat/static once deployed despite working locally in dev.
+ * Keeping `color-mix()` out of the keyframes entirely — computed here on
+ * `.cc-lit`, referenced inside the keyframes as a plain `var()` — sidesteps
+ * whatever this minifier is doing; confirmed by rebuilding and grepping the
+ * shipped CSS for the actual keyframe bodies.
+ */
+.cc-lit {
+  --cc-lit-rest-near: color-mix(in srgb, var(--sp-border-input-active) 35%, transparent);
+  --cc-lit-rest-far: color-mix(in srgb, var(--sp-border-input-active) 28%, transparent);
+  --cc-lit-peak-near: color-mix(in srgb, var(--sp-border-input-active) 55%, transparent);
+  --cc-lit-peak-far: color-mix(in srgb, var(--sp-border-input-active) 40%, transparent);
+  animation: cc-lit 2.8s ease-in-out infinite;
+}
+@keyframes cc-lit {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px var(--cc-lit-rest-near), 0 2px 8px -2px var(--cc-lit-rest-far);
+  }
+  50% {
+    box-shadow: 0 0 7px 2px var(--cc-lit-peak-near), 0 3px 10px -2px var(--cc-lit-peak-far);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-lit {
+    animation: none;
+  }
+}

@@ -21,6 +21,11 @@ interface Props {
   mediaType: MediaType;
   /** Copy the AI already wrote for this post; bound into layers via `source`. */
   post?: PostCopy;
+  /** Opens straight into an already-chosen template/state — e.g. a post an
+   *  automatic idea engine already built — instead of the blank Templates
+   *  tab. Omit for the plain "start from a template" entry point. */
+  initialTemplate?: TemplateDef;
+  initialState?: TemplateState;
   onClose: () => void;
   onSave: (template: TemplateDef | null, state: TemplateState) => void;
 }
@@ -56,10 +61,10 @@ function clampUnit(v: number) {
   return Math.min(1, Math.max(0, v));
 }
 
-export function EditMediaModal({ media, post, onClose, onSave }: Props) {
+export function EditMediaModal({ media, post, initialTemplate, initialState, onClose, onSave }: Props) {
   const [activeTab, setActiveTab] = useState<EditorTab>("templates");
-  const [template, setTemplate] = useState<TemplateDef | null>(null);
-  const [state, setState] = useState<TemplateState>({ values: {}, layers: {}, extras: [] });
+  const [template, setTemplate] = useState<TemplateDef | null>(initialTemplate ?? null);
+  const [state, setState] = useState<TemplateState>(initialState ?? { values: {}, layers: {}, extras: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {

@@ -90,3 +90,63 @@ export function PencilIcon({ width = 16, height = 16, ...props }: IconProps) {
     </svg>
   );
 }
+
+/**
+ * Storefront — stands in for the brand itself.
+ *
+ * Exported from the design file at 20×20 with a hardcoded `#5F6166`, which is
+ * `--color/neutral/black-800` and therefore exactly `sp.iconSecondary`. Swapped
+ * to `currentColor` here so the colour comes from the parent like every other
+ * icon in this file, rather than being pinned to one grey.
+ */
+export function StorefrontIcon({ width = 20, height = 20, ...props }: IconProps) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 20 20" fill="none" aria-hidden {...props}>
+      <path
+        d="M4.13479 3.54175H15.8656C16.0427 3.54175 16.1911 3.60168 16.3108 3.72154C16.4307 3.8414 16.4906 3.98987 16.4906 4.16696C16.4906 4.34418 16.4307 4.49258 16.3108 4.61216C16.1911 4.73189 16.0427 4.79175 15.8656 4.79175H4.13479C3.95771 4.79175 3.80931 4.73182 3.68959 4.61196C3.56972 4.4921 3.50979 4.34362 3.50979 4.16654C3.50979 3.98932 3.56972 3.84091 3.68959 3.72133C3.80931 3.60161 3.95771 3.54175 4.13479 3.54175ZM4.295 16.4584C4.08167 16.4584 3.90278 16.3863 3.75834 16.242C3.61403 16.0975 3.54188 15.9186 3.54188 15.7053V11.4584H3.28396C3.04674 11.4584 2.85146 11.3657 2.69813 11.1803C2.54479 10.995 2.4959 10.7838 2.55146 10.5465L3.38479 6.63633C3.42285 6.46286 3.51146 6.32043 3.65063 6.20904C3.78979 6.09751 3.94799 6.04175 4.12521 6.04175H15.8752C16.0524 6.04175 16.2106 6.09751 16.3498 6.20904C16.489 6.32043 16.5776 6.46286 16.6156 6.63633L17.449 10.5465C17.5045 10.7838 17.4556 10.995 17.3023 11.1803C17.149 11.3657 16.9537 11.4584 16.7165 11.4584H16.4585V15.8334C16.4585 16.0105 16.3986 16.1589 16.2788 16.2786C16.1589 16.3985 16.0104 16.4584 15.8333 16.4584C15.6561 16.4584 15.5077 16.3985 15.3881 16.2786C15.2684 16.1589 15.2085 16.0105 15.2085 15.8334V11.4584H11.4585V15.7053C11.4585 15.9186 11.3864 16.0975 11.2421 16.242C11.0976 16.3863 10.9188 16.4584 10.7054 16.4584H4.295ZM4.79188 15.2084H10.2085V11.4584H4.79188V15.2084ZM3.88792 10.2084H16.1125L15.4763 7.29175H4.52417L3.88792 10.2084Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Outline "i" in a circle — marks a value whose source is worth explaining. */
+export function InfoIcon({ width = 14, height = 14, ...props }: IconProps) {
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      {...props}
+    >
+      <circle cx="8" cy="8" r="6.4" />
+      <path d="M8 7.3v3.4" />
+      <path d="M8 5.2h.01" />
+    </svg>
+  );
+}
+
+/** Four-point sparkle marking AI-derived content. A stand-in like
+ *  `ShapesIcon` — drawn here rather than exported from the design file, which
+ *  publishes the AI *colour* token but no matching glyph. */
+export function SparkleIcon({ width = 16, height = 16, ...props }: IconProps) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 32 32" fill="none" aria-hidden {...props}>
+      <path
+        d="M15.5 7.5C15.5 7.5 16.4 13.6 18.4 15.6C20.4 17.6 26.5 18.5 26.5 18.5C26.5 18.5 20.4 19.4 18.4 21.4C16.4 23.4 15.5 29.5 15.5 29.5C15.5 29.5 14.6 23.4 12.6 21.4C10.6 19.4 4.5 18.5 4.5 18.5C4.5 18.5 10.6 17.6 12.6 15.6C14.6 13.6 15.5 7.5 15.5 7.5Z"
+        fill="currentColor"
+      />
+      <path
+        d="M24 3C24 3 24.4 6 25.2 6.8C26 7.6 29 8 29 8C29 8 26 8.4 25.2 9.2C24.4 10 24 13 24 13C24 13 23.6 10 22.8 9.2C22 8.4 19 8 19 8C19 8 22 7.6 22.8 6.8C23.6 6 24 3 24 3Z"
+        fill="currentColor"
+        opacity="0.7"
+      />
+    </svg>
+  );
+}

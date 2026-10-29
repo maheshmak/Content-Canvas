@@ -40,6 +40,31 @@
   --sp-icon-secondary: var(--color\/icon\/secondary);
   --sp-danger: var(--color\/text\/danger);
 
+  /* App chrome — the collapsed sidebar and the bars around the page. */
+  --sp-sidebar-bg: var(--color\/others\/blue-900);
+  --sp-sidebar-divider: var(--color\/brand\/sidebar-700);
+  --sp-divider: var(--color\/neutral\/black-600);
+  /*
+   * The active tab's underline. The design names this `--color/brandsecondary`
+   * (#FFCB00), which does not exist in this design system — and the token that
+   * *looks* like its match, --color/brand/secondary-500, is a different yellow
+   * (#FFDC53, the AI sparkle's colour). So --sp-gold is the wrong alias here
+   * despite the name; #FFCB00 lives under ai/yellow-500.
+   */
+  --sp-brand-secondary: var(--color\/ai\/yellow-500);
+
+  /* The confirmation tick on the "posts created" toast, and the wash behind it. */
+  --sp-success: var(--color\/others\/green-500);
+  --sp-success-wash: var(--color\/others\/green-50);
+  /* The same toast while it is still working. The design system has its own
+     semantic surface for this, so no new blue is introduced. */
+  --sp-info-wash: var(--color\/surface\/info-subtle);
+  --sp-info: var(--color\/text\/info);
+  --sp-border-info: var(--color\/border\/info);
+
+  /* The floating bottom nav bar — a step lighter than the sidebar. */
+  --sp-navbar-bg: var(--color\/brand\/sidebar-800);
+
   /* Brand */
   --sp-blue: var(--color\/brand\/primary-700);
   --sp-blue-subtle: var(--color\/surface\/brand-primary-hover-subtle);
@@ -47,6 +72,38 @@
   --sp-blue-disabled: var(--color\/brand\/primary-300);
   --sp-gold: var(--color\/brand\/secondary-500);
   --sp-ai-yellow: var(--color\/ai\/yellow-500);
+  /* The three stops of the AI mark's gradient, straight off BaseAIFilled. */
+  --sp-ai-blue: var(--color\/ai\/blue-700);
+  --sp-ai-orange: var(--color\/ai\/orange-700);
+
+  /*
+   * Illustration tints for the post-idea motifs.
+   *
+   * Four hue families, each with a wash, a mid and a solid, so a row of idea
+   * cards reads as one family rather than a sticker sheet. These are the only
+   * four families in the design system that carry all three steps — which is
+   * also why the rotation is four wide.
+   *
+   * There is no `shade` alias: `others/blue` and `others/red` have a dark step
+   * but green and orange don't, and inventing two hexes to fill the gap would
+   * put raw colour back into the app layer. The shaded face of each solid is
+   * mixed off the solid instead (see `tint` in theme.ts).
+   */
+  --sp-tint-blue-wash: var(--color\/others\/blue-50);
+  --sp-tint-blue-mid: var(--color\/others\/blue-100);
+  --sp-tint-blue-solid: var(--color\/others\/blue-500);
+
+  --sp-tint-green-wash: var(--color\/others\/green-50);
+  --sp-tint-green-mid: var(--color\/others\/green-100);
+  --sp-tint-green-solid: var(--color\/others\/green-500);
+
+  --sp-tint-orange-wash: var(--color\/others\/orange-50);
+  --sp-tint-orange-mid: var(--color\/others\/orange-100);
+  --sp-tint-orange-solid: var(--color\/others\/orange-500);
+
+  --sp-tint-red-wash: var(--color\/others\/red-50);
+  --sp-tint-red-mid: var(--color\/others\/red-100);
+  --sp-tint-red-solid: var(--color\/others\/red-700);
 
   /*
    * Spacing and radius. The design system stores these as unitless numbers
