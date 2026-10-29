@@ -57,38 +57,6 @@ const PRESELECTED_PLATFORMS: PlatformType[] = ["facebook"];
  */
 const SECTIONS: readonly LoadSection[] = SHOW_POST_IDEAS ? ["accounts", "about", "ideas"] : ["accounts", "about"];
 
-const WELCOME_KEY = "cc-welcomed";
-
-/**
- * Whether this browser has ever opened Content Canvas before — true for
- * exactly one visit, ever, then false for good.
- *
- * Read once at mount via `useState`'s lazy initializer (so it reflects the
- * state *before* this visit marks itself), and recorded in an effect rather
- * than inline in that initializer — writing inside the initializer would
- * make the read-then-write non-idempotent under Strict Mode's deliberate
- * double invocation in development. localStorage, not component state: a
- * reload or a second tab is still the same "first" visit, not a new one.
- */
-function useFirstOpen(): boolean {
-  const [firstOpen] = useState(() => {
-    try {
-      return !localStorage.getItem(WELCOME_KEY);
-    } catch {
-      return true;
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem(WELCOME_KEY, "1");
-    } catch {
-      /* Private browsing or storage disabled — the welcome just repeats,
-         which is a fine fallback for a prototype. */
-    }
-  }, []);
-  return firstOpen;
-}
-
 /**
  * Step 1 — the screen this replaces is one textarea headed "Tell us about your
  * brand", with a secondary escape and a primary button.
@@ -195,7 +163,6 @@ export function BrandContextStep({
    * fast entrance instead of waiting behind the rest.
    */
   const seq = useBrandLoadSequence(brand.id, reduce, SECTIONS);
-  const firstOpen = useFirstOpen();
 
   // One tick after each section arrives — the pause `Step` needs to actually
   // animate rather than mount already at rest. `useBrandLoadSequence` owns
@@ -262,15 +229,14 @@ export function BrandContextStep({
             (it's the entry point, not a canvas anyone's inside yet), so this
             takes over saying where you are. Which brand this is still comes
             through immediately after, in the "About your brand" text
-            itself. "Welcome to" is a first-visit-only greeting, not a
-            permanent page title — see `useFirstOpen`. The mark stands in for
-            the avatar the brand identity row used to carry — static, not
-            twinkling; the loading hint below already carries the "still
-            working" signal, and having it twice was one too many. */}
+            itself. The mark stands in for the avatar the brand identity row
+            used to carry — static, not twinkling; the loading hint below
+            already carries the "still working" signal, and having it twice
+            was one too many. */}
         <Step {...step(1)} style={{ display: "flex", alignItems: "center", gap: space[12] }}>
           <AiMark size={24} animated={false} />
           <h1 style={{ margin: 0, minWidth: 0, fontSize: "20px", lineHeight: "26px", fontWeight: 600, color: sp.textPrimary }}>
-            {firstOpen ? "Welcome to Content Canvas" : "Content Canvas"}
+            Welcome to Content Canvas
           </h1>
         </Step>
 
