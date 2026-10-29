@@ -776,7 +776,7 @@ function AccountRow({
     >
       <AccountAvatar platform={platform.type} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: type.s.size, fontWeight: 600, color: sp.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: type.s.size, fontWeight: 400, color: sp.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {brandName}
         </div>
         <div style={{ fontSize: type.xs.size, color: sp.textTertiary }}>{platform.handle}</div>
