@@ -214,7 +214,7 @@ export function BrandContextStep({
       <div
         className={!seq.allLoaded ? "cc-lit" : undefined}
         style={{
-          width: "800px",
+          width: "640px",
           maxWidth: "100%",
           margin: "auto",
           background: sp.white,
