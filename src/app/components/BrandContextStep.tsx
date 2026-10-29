@@ -8,7 +8,7 @@ import { sp, space, radius, type, FONT } from "../theme";
 import { prefersReducedMotion } from "../motion";
 import { TextArea } from "./ds";
 import { InfoIcon } from "./icons";
-import { PlatformIcon } from "./PlatformIcon";
+import { AccountAvatar } from "./AccountAvatar";
 import { AiMark } from "./AiMark";
 import { IdeaMotif, momentDate } from "./IdeaMotif";
 import type { CalendarDate } from "./IdeaMotif";
@@ -33,10 +33,19 @@ function seedKey(seed: IdeaSeed | undefined): string {
 const SHOW_POST_IDEAS = false;
 
 /**
- * "+ Add account" is parked with it — the canvas is scoped to one account for
- * now (see `ACTIVE_PLATFORMS`), so there is nothing to add yet.
+ * "+ Add account" is parked with it — the page shows one pre-selected account
+ * for now (see `PRESELECTED_PLATFORMS`), so there is nothing to add yet.
  */
 const SHOW_ADD_ACCOUNT = false;
+
+/**
+ * The account(s) the page shows, ticked for the user.
+ *
+ * Display only. The brand still carries every connected account, and the
+ * results screen still writes a post for each of them — this narrows what the
+ * starting page puts in front of the user, not what gets generated.
+ */
+const PRESELECTED_PLATFORMS: PlatformType[] = ["facebook"];
 
 /**
  * The sections in the order they arrive, which is also the order they sit on
@@ -144,7 +153,6 @@ export function BrandContextStep({
 
   // Default selection is the first card option (ideas[0])
   const [seed, setSeed] = useState<IdeaSeed | undefined>(() => ideas[0]?.seed);
-  const [removedPlatforms, setRemovedPlatforms] = useState<Set<string>>(new Set());
 
   // Ensure first card is selected by default when ideas load
   useEffect(() => {
@@ -204,6 +212,10 @@ export function BrandContextStep({
 
   const selectedKey = seedKey(seed);
   const noAccounts = brand.platforms.length === 0;
+  // Falls back to the first connected account rather than showing none, for a
+  // brand that has accounts but not the pre-selected one.
+  const preselected = brand.platforms.filter((p) => PRESELECTED_PLATFORMS.includes(p.type));
+  const accounts = preselected.length ? preselected : brand.platforms.slice(0, 1);
 
   return (
     <div
@@ -266,24 +278,19 @@ export function BrandContextStep({
         {seq.stepDone("accounts") && (
           <Step mounted={accountsRevealed} reduce={reduce} delay={0} style={{ display: "flex", flexDirection: "column", gap: space[8] }}>
             <label style={{ fontSize: type.s.size, lineHeight: type.s.line, fontWeight: 600, color: sp.textPrimary }}>
-              Accounts
+              Account
             </label>
             {noAccounts ? (
               <AccountsEmptyState />
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", gap: space[8], alignItems: "center" }}>
-                {[...brand.platforms]
+                {[...accounts]
                   .sort((a, b) => {
                     const order: Record<string, number> = { facebook: 1, instagram: 2, twitter: 3, linkedin: 4, tiktok: 5 };
                     return (order[a.type] ?? 99) - (order[b.type] ?? 99);
                   })
-                  .filter((p) => !removedPlatforms.has(p.type))
                   .map((p) => (
-                    <AccountPill
-                      key={p.type}
-                      platform={p}
-                      onRemove={() => setRemovedPlatforms((prev) => new Set([...prev, p.type]))}
-                    />
+                    <AccountRow key={p.type} brandName={brand.name} platform={p} />
                   ))}
                 {SHOW_ADD_ACCOUNT && (
                   <button
@@ -337,6 +344,10 @@ export function BrandContextStep({
               onChange={(e) => handleDescriptionChange(e.target.value)}
               placeholder="e.g. Copperline Bakery — a neighbourhood bakery known for sourdough and early mornings"
               rows={3}
+              // A little taller than the design system's 96px floor: this is
+              // the one field on the page the user is invited to rewrite, and
+              // the description it opens with runs to several lines.
+              style={{ minHeight: "120px" }}
             />
           </Step>
         )}
@@ -538,13 +549,13 @@ function SourcePopover({ postCount, accountCount }: { postCount: number; account
  * What to say while waiting on the section that hasn't arrived yet.
  *
  * Named for what SoPi is doing, not for the section it fills in — "finding
- * your connected accounts" is the work; "Accounts" is just the label the
+ * your connected account" is the work; "Account" is just the label the
  * result sits under. Read off `seq` directly rather than passed in as an
  * index, so the copy and the section it describes can never point at two
  * different steps.
  */
 function loadingHintText(seq: BrandLoadSequence): string {
-  if (!seq.stepDone("accounts")) return "SoPi is finding your connected accounts…";
+  if (!seq.stepDone("accounts")) return "SoPi is finding your connected account…";
   // Also the line that holds while the hint fades out. Everything is done by
   // then, so with Post ideas parked, falling through would flip the text to
   // work that was never part of the wait.
@@ -764,64 +775,47 @@ function AccountsEmptyState() {
 }
 
 /**
- * Account shown as a pill with platform icon, handle, and an × remove button.
+ * The connected account, drawn the way the results screen draws it at the top
+ * of a post card: the profile picture, the brand's name, the page under it —
+ * with the network's mark pinned to the avatar's corner, since here nothing
+ * else says which network this is.
+ *
+ * This replaced a pill with an × to take the account out. There is one
+ * pre-selected account and nothing to choose between, so the control went with
+ * the choice it existed for.
+ *
+ * No box around it. On the post card the border sets this row apart from the
+ * post beneath it; here nothing sits beneath it but the next field, and a frame
+ * would make a label look like an input. With no border to inset from, the
+ * avatar also sits flush with the section label above it.
  */
-function AccountPill({
+function AccountRow({
+  brandName,
   platform,
-  onRemove,
 }: {
+  brandName: string;
   // `ConnectedPlatform["type"]`, not `string` — `PlatformIcon` switches on the
   // union, so widening it here loses the exhaustiveness the icon relies on.
   platform: { type: PlatformType; handle: string };
-  onRemove: () => void;
 }) {
-  const [hover, setHover] = useState(false);
   return (
-    <span
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+    <div
       style={{
-        display: "inline-flex",
+        display: "flex",
         alignItems: "center",
-        gap: space[4],
-        height: "32px",
-        padding: `0 ${space[8]} 0 ${space[12]}`,
-        borderRadius: radius[16],
-        border: `1px solid ${hover ? sp.borderActive : sp.borderSub}`,
-        background: sp.white,
+        gap: space[8],
+        width: "100%",
         fontFamily: FONT,
-        fontSize: type.s.size,
-        lineHeight: type.s.line,
-        color: sp.textPrimary,
-        transition: "border-color 0.12s",
       }}
     >
-      <PlatformIcon platform={platform.type} size={16} />
-      <span style={{ color: sp.textPrimary, fontWeight: 500 }}>{platform.handle}</span>
-      <button
-        type="button"
-        title={`Remove ${platform.handle}`}
-        onClick={onRemove}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 16,
-          height: 16,
-          padding: 0,
-          border: "none",
-          background: "none",
-          cursor: "pointer",
-          color: sp.textTertiary,
-          fontSize: "14px",
-          lineHeight: 1,
-          borderRadius: "50%",
-          flexShrink: 0,
-        }}
-      >
-        ×
-      </button>
-    </span>
+      <AccountAvatar platform={platform.type} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: type.s.size, fontWeight: 600, color: sp.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {brandName}
+        </div>
+        <div style={{ fontSize: type.xs.size, color: sp.textTertiary }}>{platform.handle}</div>
+      </div>
+    </div>
   );
 }
 

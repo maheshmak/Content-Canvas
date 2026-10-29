@@ -1,4 +1,6 @@
+import type { PlatformType } from "../brand/types";
 import { sp } from "../theme";
+import { PlatformIcon } from "./PlatformIcon";
 
 import iconAvatar from "@/assets/chrome/base-avatar.svg";
 
@@ -12,9 +14,13 @@ import iconAvatar from "@/assets/chrome/base-avatar.svg";
  * face read as somebody's profile photo. This slot is the opposite case: it
  * stands in for the connected account's actual profile picture, which is
  * exactly what a face belongs to. Same reasoning, opposite answer.
+ *
+ * Pass `platform` to pin that network's mark to the bottom-right corner — for
+ * places where nothing else on the row says which network the account is on.
+ * A post card doesn't: its header already names the network.
  */
-export function AccountAvatar({ size = 32 }: { size?: number }) {
-  return (
+export function AccountAvatar({ size = 32, platform }: { size?: number; platform?: PlatformType }) {
+  const circle = (
     <span
       aria-hidden
       style={{
@@ -29,6 +35,28 @@ export function AccountAvatar({ size = 32 }: { size?: number }) {
       }}
     >
       <img src={iconAvatar} alt="" style={{ display: "block", width: "13px", height: "13px" }} />
+    </span>
+  );
+
+  if (!platform) return circle;
+
+  return (
+    <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+      {circle}
+      {/* A white ring lifts the mark off the grey circle it overlaps. */}
+      <span
+        style={{
+          position: "absolute",
+          right: "-5px",
+          bottom: "-5px",
+          display: "inline-flex",
+          padding: "1.5px",
+          borderRadius: "50%",
+          background: sp.white,
+        }}
+      >
+        <PlatformIcon platform={platform} size={14} />
+      </span>
     </span>
   );
 }

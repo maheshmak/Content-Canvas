@@ -39,7 +39,7 @@ export function hasHistory(brand: Brand): boolean {
  * history rather than picking at random. Solstice sits in another vertical
  * entirely, and so can never be handed a gym angle.
  */
-const FIXTURE_BRANDS: Brand[] = [
+const ALL_BRANDS: Brand[] = [
   {
     id: "bruteforce",
     name: "BruteForce",
@@ -206,27 +206,6 @@ const FIXTURE_BRANDS: Brand[] = [
     platforms: [],
   },
 ];
-
-/**
- * The networks the canvas works with for now: Facebook only.
- *
- * Every connected account produces its own post, so a brand with four of them
- * turns one idea into four recommendations to review. One account keeps the
- * flow to one idea and one post. The other accounts stay in the fixtures above
- * and are filtered out here rather than deleted — widening this list is the
- * whole change needed to bring them back.
- */
-export const ACTIVE_PLATFORMS: PlatformType[] = ["facebook"];
-
-/**
- * Filtered once, at module load, so a brand keeps the same identity from one
- * render to the next — `findBrand` hands out these objects, and the screens
- * memoise on them.
- */
-const ALL_BRANDS: Brand[] = FIXTURE_BRANDS.map((brand) => ({
-  ...brand,
-  platforms: brand.platforms.filter((p) => ACTIVE_PLATFORMS.includes(p.type)),
-}));
 
 /**
  * What the app actually offers: one brand.
