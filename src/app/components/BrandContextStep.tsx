@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Brand, IdeaMotif as Motif, IdeaSeed, PlatformType } from "../brand/types";
 import { rankPresets, UPCOMING_MOMENTS } from "../brand/generateIdea";
 import { describeBrand, parseBrandName } from "../brand/describeBrand";
-import { brandAnalytics, hasHistory, ANALYTICS_WINDOW_DAYS } from "../brand/fixtures";
+import { hasHistory, ANALYTICS_WINDOW_DAYS } from "../brand/fixtures";
 import { sp, space, radius, type, FONT } from "../theme";
 import { prefersReducedMotion } from "../motion";
 import { TextArea } from "./ds";
@@ -48,6 +48,14 @@ const SHOW_ADD_ACCOUNT = false;
 const PRESELECTED_PLATFORMS: PlatformType[] = ["facebook"];
 
 /**
+ * The post count the "About your brand" source note quotes. Fixed rather than
+ * summed from the brand's analytics: those add up every connected account,
+ * while the page now shows one — so the note would claim posts from accounts
+ * the user can't see here.
+ */
+const SOURCE_POST_COUNT = 20;
+
+/**
  * The sections in the order they arrive, which is also the order they sit on
  * the page. Accounts first: it is what the rest of the page is about, and
  * everything SoPi writes in "About your brand" is read from it.
@@ -84,7 +92,6 @@ export function BrandContextStep({
   onGenerate: (context: string, seed?: IdeaSeed) => void;
 }) {
   const reduce = prefersReducedMotion();
-  const stats = brandAnalytics(brand);
   const established = hasHistory(brand);
 
   const inferred = useMemo(() => describeBrand(brand), [brand]);
@@ -207,7 +214,7 @@ export function BrandContextStep({
       <div
         className={!seq.allLoaded ? "cc-lit" : undefined}
         style={{
-          width: "520px",
+          width: "800px",
           maxWidth: "100%",
           margin: "auto",
           background: sp.white,
@@ -298,10 +305,7 @@ export function BrandContextStep({
                 About your brand
               </label>
               {established && (
-                <SourcePopover
-                  postCount={stats.postsPublished}
-                  accountCount={stats.platformCount}
-                />
+                <SourcePopover postCount={SOURCE_POST_COUNT} accountCount={accounts.length} />
               )}
             </div>
             <TextArea
@@ -411,7 +415,7 @@ export function BrandContextStep({
               >
                 <img src={iconButtonAi} alt="" style={{ display: "block", width: "18.3333px", height: "18.3333px" }} />
               </span>
-              Generate Posts
+              Create
             </button>
           </Step>
         )}
